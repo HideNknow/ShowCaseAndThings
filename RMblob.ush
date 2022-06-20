@@ -1,9 +1,10 @@
+
 struct RMstruct
 {
 
 	float RMSphere(float3 pos)
 	{
-		return length(pos) - 50;
+		return length(pos) - DistanceFromCenter;
 	}
 
 	float3 RMNormal(float3 pos)
@@ -16,11 +17,85 @@ struct RMstruct
 		));
 	}
 
-	float SmoothUnion (float d1, float d2, float k )
+	float pR45(float2 p)// rotatte 45
 	{
-    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
-    return lerp( d2, d1, h ) - k*h*(1.0-h); 
+	p = (p + float2(p.y, -p.x))*sqrt(0.5);
+	return p;
 	}
+
+	float mod(float x, float y)
+	{
+  		return x - y * floor(x/y);
+	}
+
+	float pMod1(inout float p, float size) 
+	{
+		float halfsize = size*0.5;
+		p = mod(p + halfsize, size) - halfsize;
+		float c = floor((p + halfsize)/size);
+
+		return c;
+		}
+	
+	float2 pMod2(float2 p, float2 size) 
+	{
+		float2 c = floor((p + size*0.5)/size);
+		p = mod(p + size*0.5,size) - size*0.5;
+		return c;
+	}
+
+	// Repeat in three dimensions
+	float3 pMod3(float3 p, float3 size) 
+	{
+		float3 c = floor((p + size*0.5)/size);
+		p = mod(p + size*0.5, size) - size*0.5;
+		return c;
+	}
+
+
+	float fOpUnionStairs(float a, float b, float r, float n) 
+	{		
+		float s = r/n;
+		float u = b-r;
+		return min(min(a,b), 0.5 * (u + a + abs ((mod (u - a + s, 2 * s)) - s)));
+	}
+
+
+	float fOpSmoothUnion (float d1, float d2, float k )
+	{
+		float h = clamp( 0.5 + 0.5 *(d2-d1)/k, 0.0, 1.0 );
+    	return lerp( d2, d1, h ) - k*h*(1-h); 
+
+	}
+	
+	// The "Columns" flavour makes n-1 circular columns at a 45 degree angle:
+	float fOpUnionColumns(float a, float b, float r, float n) {
+
+	if ((a < r) && (b < r)) {
+
+		float2 p = float2(a, b);
+		float columnradius = r*sqrt(2)/((n-1)*2+sqrt(2));
+		pR45(p);
+		p.x -= sqrt(2)/2*r;
+		p.x += columnradius*sqrt(2);
+		if (mod(n,2) == 1) {
+			p.y += -columnradius;
+		}
+		// At this point, we have turned 45 degrees and moved at a point on the
+		// diagonal that we want to place the columns on.
+		// Now, repeat the domain along this direction and place a circle.
+		pMod1 (p.y, columnradius*Test);
+		float result = length(p) - columnradius;
+		result = min(result, p.x);
+		result = min(result, a);
+		return min(result, b);
+	}
+	 else {
+		return min(a, b);
+	}
+
+	}
+
 }; 
 
 RMstruct RM;
@@ -29,18 +104,20 @@ float3 pos = WorldPosition;
 float3 Normal = 0;
 
 
-for(int i=0 ; i<MaxSteps ; i++)
+for(int i = 0 ; i < MaxSteps ; i++)
 {
 	
 	if(SceneDepth < length(pos - CameraPosition))
 	break;
 
 	float d1 = RM.RMSphere(pos - ObjectPosition);
-	float d2 = SceneDepth - length(pos - CameraPosition); 
+	float d2 = GetDistanceToNearestSurfaceGlobal(pos); 
 
-	float distance = RM.SmoothUnion(d1, d2 , Smooth);
+	// float distance = RM.fOpSmoothUnion(d1, d2 , Smooth);
+	 float distance = RM.fOpUnionColumns(d1, d2 , Size ,Smooth) ;
+	//float distance = RM.fOpUnionStairs(d1, d2 , Size ,Smooth);
 
-	if(distance < 0.01)
+	if(distance < RMStop)
 	{
 		col = 1;
 		Normal = RM.RMNormal(pos - ObjectPosition);
