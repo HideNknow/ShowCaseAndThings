@@ -8,12 +8,17 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
 
-
 //////////////////////////////////////////////////////////////////////////
 // AShowCaseAndThingsCharacter
 
-AShowCaseAndThingsCharacter::AShowCaseAndThingsCharacter()
+AShowCaseAndThingsCharacter::AShowCaseAndThingsCharacter(const FObjectInitializer& ObjectInitializer) :
+	Super(ObjectInitializer.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))
+
 {
+
+	CustomMovementComponent = Cast<UCustomMovementComponent>(GetCharacterMovement());
+
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 

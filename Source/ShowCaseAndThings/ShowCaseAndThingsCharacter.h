@@ -4,6 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+
+#include "Public/CustomMovementComponent.h"
+
 #include "ShowCaseAndThingsCharacter.generated.h"
 
 class UInputComponent;
@@ -22,6 +25,13 @@ class AShowCaseAndThingsCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+protected:
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement)
+	class UCustomMovementComponent* CustomMovementComponent;
+
+private:
+
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category=Mesh)
 	USkeletalMeshComponent* Mesh1P;
@@ -31,7 +41,7 @@ class AShowCaseAndThingsCharacter : public ACharacter
 	UCameraComponent* FirstPersonCameraComponent;
 
 public:
-	AShowCaseAndThingsCharacter();
+	AShowCaseAndThingsCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());;
 
 protected:
 	virtual void BeginPlay();
