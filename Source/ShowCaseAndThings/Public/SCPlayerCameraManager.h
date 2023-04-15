@@ -18,14 +18,14 @@ class SHOWCASEANDTHINGS_API ASCPlayerCameraManager : public APlayerCameraManager
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditDefaultsOnly) float CrouchBlendDuration = .5f;
 	float CrouchBlendTime;
 	
 
 public:
-	ASCPlayerCameraManager();
-
-	virtual void UpdateViewTarget(FTViewTarget)
+	/*ASCPlayerCameraManager();*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite) bool SmoothCamera;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite) float CrouchBlendDuration = .1f;
+	virtual void UpdateViewTarget(FTViewTarget& OutVT, float DeltaTime) override;
 
 
 };

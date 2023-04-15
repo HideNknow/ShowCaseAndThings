@@ -25,6 +25,7 @@ class AShowCaseAndThingsCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+
 protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Movement)
@@ -108,6 +109,8 @@ public:
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns FirstPersonCameraComponent subobject **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	UFUNCTION(BlueprintPure) FORCEINLINE UCustomMovementComponent* GetPlayerCharacterMovement() const { return CustomMovementComponent; }
 
 };
 

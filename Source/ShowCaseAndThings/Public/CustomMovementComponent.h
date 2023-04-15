@@ -3,6 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
+#include "Matthieu/CustomCharacter.h"
+
+
 #include "GameFramework/CharacterMovementComponent.h"
 #include "CustomMovementComponent.generated.h"
 
@@ -46,7 +50,6 @@ class SHOWCASEANDTHINGS_API UCustomMovementComponent : public UCharacterMovement
 		// Other Variables
 		uint8 Saved_bHadAnimRootMotion : 1;
 		uint8 Saved_bTransitionFinished : 1;
-		uint8 Saved_bPrevWantsToCrouch : 1;
 		uint8 Saved_bWantsToProne : 1;
 		uint8 Saved_bWallRunIsRight : 1;
 
@@ -78,24 +81,57 @@ class SHOWCASEANDTHINGS_API UCustomMovementComponent : public UCharacterMovement
 public:
 	UCustomMovementComponent();
 
+protected:
+	virtual void InitializeComponent() override;
+
 public:
 	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
+
+	virtual bool IsMovingOnGround() const override;
+	virtual bool CanCrouchInCurrentState() const override;
 
 protected:
 	virtual void UpdateFromCompressedFlags(uint8 Flags) override;
 
+//for Movement
+public:
+	virtual void UpdateCharacterStateBeforeMovement(float DeltaSeconds) override;
+
+protected:
 	virtual void OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation, const FVector& OldVelocity) override;
+	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
+
+#pragma region Slide
+private:
+	void EnterSlide(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
+	void ExitSlide();
+	//Le joueur peut il slide en f(Vitesse & Sol)
+	bool CanSlide() const;
+	void PhysSlide(float deltaTime, int32 Iterations);
 
 
-#pragma region input
+	// Slide
+	UPROPERTY(EditDefaultsOnly) float MinSlideSpeed = 400.f;
+	UPROPERTY(EditDefaultsOnly) float SlideEnterImpulse = 400.f;
+	UPROPERTY(EditDefaultsOnly) float SlideGravityForce = 4000.f;
+	UPROPERTY(EditDefaultsOnly) float SlideFrictionFactor = .06f;
+
+
+FCollisionQueryParams GetIgnoreCharacterParams() const;
+
+#pragma endregion 
+
 
 public:
 	UFUNCTION(BlueprintCallable) void SprintPressed();
 	UFUNCTION(BlueprintCallable) void SprintReleased();
 	UFUNCTION(BlueprintCallable) void CrouchPressed();
 	UFUNCTION(BlueprintCallable) void CrouchReleased();
+	UFUNCTION(BlueprintCallable) void CustomDisplayDebug();
+
+	UFUNCTION(BlueprintPure) bool IsCustomMovementMode(ECustomMovementMode InCustomMovementMode) const;
+	UFUNCTION(BlueprintPure) bool IsMovementMode(EMovementMode InMovementMode) const;
 
 
-	
 
 };
