@@ -114,6 +114,7 @@ private:
 	UPROPERTY(EditDefaultsOnly) float MinSlideSpeed = 400.f;
 	UPROPERTY(EditDefaultsOnly) float SlideEnterImpulse = 400.f;
 	UPROPERTY(EditDefaultsOnly) float SlideGravityForce = 4000.f;
+	//Multiplie GroundFriction*SlideFrictionFactor
 	UPROPERTY(EditDefaultsOnly) float SlideFrictionFactor = .06f;
 
 

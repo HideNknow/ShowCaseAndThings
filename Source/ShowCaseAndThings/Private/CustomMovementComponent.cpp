@@ -160,6 +160,8 @@ void UCustomMovementComponent::UpdateCharacterStateBeforeMovement(float DeltaSec
 	{
 		SetMovementMode(MOVE_Walking);
 	}
+
+	Super::UpdateCharacterStateBeforeMovement(DeltaSeconds);
 }
 
 void UCustomMovementComponent::OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation, const FVector& OldVelocity)
@@ -178,6 +180,7 @@ void UCustomMovementComponent::OnMovementUpdated(float DeltaSeconds, const FVect
 		}
 	}
 
+
 	this->CustomDisplayDebug();
 
 }
@@ -185,20 +188,19 @@ void UCustomMovementComponent::OnMovementUpdated(float DeltaSeconds, const FVect
 void UCustomMovementComponent::CustomDisplayDebug()
 {
 	FString strg_Movement = GetMovementName();
-	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, strg_Movement);
-
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, (TEXT("Vel: %s"), FString::SanitizeFloat(Velocity.Size())));
-
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, (TEXT("Accel: %s"), Acceleration.ToString()));
-
-	DrawDebugLine(GetWorld(), GetOwner()->GetActorLocation(), GetOwner()->GetActorLocation() + (Acceleration * 400), FColor::Blue, false, 0.f, -1.f, 1.f);
-
-	
 	if (GetMovementName() == FString("Custom"))
 	{
 		UEnum* MyEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECustomMovementMode"), true);
 		strg_Movement = MyEnum->GetNameStringByValue(CustomMovementMode);
 	}
+	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, strg_Movement);
+
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, (TEXT("Vel: %s"), FString::SanitizeFloat(Velocity.Size())));
+
+	DrawDebugLine(GetWorld(), GetOwner()->GetActorLocation(), GetOwner()->GetActorLocation() + (Acceleration * 400), FColor::Blue, false, 0.f, -1.f, 1.f);
+
+	
+
 
 
 }
@@ -285,7 +287,7 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 	//On ne fait pas de calcul de phys si le delta < au minTickTime
 	if (deltaTime < MIN_TICK_TIME)
 	{
-		return; 
+		return;
 	}
 
 	//Si on ne peut pas Slide
@@ -293,7 +295,6 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 	{
 		SetMovementMode(MOVE_Walking);
 		StartNewPhysics(deltaTime, Iterations);
-
 		return;
 	}
 
@@ -302,7 +303,7 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 	bool bTriedLedgeMove = false;
 	float remainingTime = deltaTime;
 
-	// Perform the move in the same frame
+	// Perform the move
 	while ((remainingTime >= MIN_TICK_TIME) && (Iterations < MaxSimulationIterations) && CharacterOwner && (CharacterOwner->Controller || bRunPhysicsWithNoController || (CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy)))
 	{
 		Iterations++;
@@ -324,10 +325,10 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 		SlopeForce.Z = 0.f;
 		Velocity += SlopeForce * SlideGravityForce * deltaTime;
 
-		Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetForwardVector().GetSafeNormal2D());
+		Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetRightVector().GetSafeNormal2D());
 
 		// Apply acceleration
-		CalcVelocity(timeTick, SlideFrictionFactor, false, GetMaxBrakingDeceleration());
+		CalcVelocity(timeTick, GroundFriction * SlideFrictionFactor, false, GetMaxBrakingDeceleration());
 
 		// Compute move parameters
 		const FVector MoveVelocity = Velocity;
