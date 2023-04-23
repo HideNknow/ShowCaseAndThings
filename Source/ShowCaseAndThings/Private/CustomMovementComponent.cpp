@@ -133,7 +133,7 @@ bool UCustomMovementComponent::IsMovingOnGround() const
 
 bool UCustomMovementComponent::CanCrouchInCurrentState() const
 {
-	return Super::CanCrouchInCurrentState() && IsMovingOnGround();
+	return Super::CanCrouchInCurrentState() && this->IsMovingOnGround();
 }
 
 void UCustomMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
@@ -148,16 +148,17 @@ void UCustomMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 
 void UCustomMovementComponent::UpdateCharacterStateBeforeMovement(float DeltaSeconds)
 {
-	// Slide
-	if (MovementMode == MOVE_Walking && Safe_bWantsToSprint && bWantsToCrouch)
+	// Slide Condition
+	if (MovementMode == MOVE_Walking && bWantsToCrouch && Safe_bWantsToSprint)
 	{
 		if (CanSlide())
 		{
 			SetMovementMode(MOVE_Custom, CMOVE_Slide);
 		}
 	}
-	else if (IsCustomMovementMode(CMOVE_Slide) && !bWantsToCrouch)
+	else if (IsCustomMovementMode(CMOVE_Slide) &&                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      )
 	{
+		
 		SetMovementMode(MOVE_Walking);
 	}
 
@@ -195,13 +196,10 @@ void UCustomMovementComponent::CustomDisplayDebug()
 	}
 	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, strg_Movement);
 
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, (TEXT("Vel: %s"), FString::SanitizeFloat(Velocity.Size())));
+	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, (TEXT("Vel %s"), FString::SanitizeFloat(Velocity.Size2D())));
+	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, (TEXT("CanCrouch %s"),CanCrouchInCurrentState() ? TEXT("true") : TEXT("false")));
 
-	DrawDebugLine(GetWorld(), GetOwner()->GetActorLocation(), GetOwner()->GetActorLocation() + (Acceleration * 400), FColor::Blue, false, 0.f, -1.f, 1.f);
-
-	
-
-
+	DrawDebugLine(GetWorld(), GetOwner()->GetActorLocation(), GetOwner()->GetActorLocation() + (Acceleration.GetSafeNormal2D() * 100), FColor::Blue, false, 0.f, -1.f, 1.f);
 
 }
 
@@ -244,7 +242,7 @@ void UCustomMovementComponent::CrouchReleased()
 
 bool UCustomMovementComponent::IsCustomMovementMode(ECustomMovementMode InCustomMovementMode) const
 {
-	return false;
+	return MovementMode == MOVE_Custom && CustomMovementMode == InCustomMovementMode;
 }
 
 bool UCustomMovementComponent::IsMovementMode(EMovementMode InMovementMode) const
@@ -325,7 +323,7 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 		SlopeForce.Z = 0.f;
 		Velocity += SlopeForce * SlideGravityForce * deltaTime;
 
-		Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetRightVector().GetSafeNormal2D());
+		//Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetRightVector().GetSafeNormal2D());
 
 		// Apply acceleration
 		CalcVelocity(timeTick, GroundFriction * SlideFrictionFactor, false, GetMaxBrakingDeceleration());
