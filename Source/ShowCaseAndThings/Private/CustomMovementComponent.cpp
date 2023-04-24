@@ -133,7 +133,8 @@ bool UCustomMovementComponent::IsMovingOnGround() const
 
 bool UCustomMovementComponent::CanCrouchInCurrentState() const
 {
-	return Super::CanCrouchInCurrentState() && this->IsMovingOnGround();
+	//ajouter les conditions a la suite du Supper comme dans un if()
+	return Super::CanCrouchInCurrentState();
 }
 
 void UCustomMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
@@ -146,17 +147,19 @@ void UCustomMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 
 #pragma endregion
 
+//cette fonction est appeler tout les ticks
 void UCustomMovementComponent::UpdateCharacterStateBeforeMovement(float DeltaSeconds)
 {
 	// Slide Condition
-	if (MovementMode == MOVE_Walking && bWantsToCrouch && Safe_bWantsToSprint)
+	if (MovementMode == MOVE_Walking && bWantsToCrouch)
 	{
 		if (CanSlide())
 		{
 			SetMovementMode(MOVE_Custom, CMOVE_Slide);
 		}
 	}
-	else if (IsCustomMovementMode(CMOVE_Slide) &&                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      )
+	//Sortir du slide
+	else if (IsCustomMovementMode(CMOVE_Slide) && !bWantsToCrouch)
 	{
 		
 		SetMovementMode(MOVE_Walking);
@@ -196,7 +199,7 @@ void UCustomMovementComponent::CustomDisplayDebug()
 	}
 	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, strg_Movement);
 
-	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, (TEXT("Vel %s"), FString::SanitizeFloat(Velocity.Size2D())));
+	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, (TEXT("Vel %s"), FString::SanitizeFloat(Velocity.Size())));
 	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, (TEXT("CanCrouch %s"),CanCrouchInCurrentState() ? TEXT("true") : TEXT("false")));
 
 	DrawDebugLine(GetWorld(), GetOwner()->GetActorLocation(), GetOwner()->GetActorLocation() + (Acceleration.GetSafeNormal2D() * 100), FColor::Blue, false, 0.f, -1.f, 1.f);
@@ -253,6 +256,16 @@ bool UCustomMovementComponent::IsMovementMode(EMovementMode InMovementMode) cons
 #pragma endregion 
 
 #pragma region Slide
+bool UCustomMovementComponent::CanSlide() const
+{
+	FVector Start = UpdatedComponent->GetComponentLocation();
+	FVector End = Start + CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 2.5f * FVector::DownVector;
+	FName ProfileName = TEXT("BlockAll");
+	bool bValidSurface = GetWorld()->LineTraceTestByProfile(Start, End, ProfileName, this->GetIgnoreCharacterParams());
+	bool bEnoughSpeed = LastUpdateVelocity.Size() > MinSlideSpeed;
+
+	return bValidSurface && bEnoughSpeed;
+}
 
 void UCustomMovementComponent::EnterSlide(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode)
 {
@@ -269,16 +282,6 @@ void UCustomMovementComponent::ExitSlide()
 	bOrientRotationToMovement = true;
 }
 
-bool UCustomMovementComponent::CanSlide() const
-{
-	FVector Start = UpdatedComponent->GetComponentLocation();
-	FVector End = Start + CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 2.5f * FVector::DownVector;
-	FName ProfileName = TEXT("BlockAll");
-	bool bValidSurface = GetWorld()->LineTraceTestByProfile(Start, End, ProfileName, this->GetIgnoreCharacterParams());
-	bool bEnoughSpeed = Velocity.Size() > MinSlideSpeed;
-
-	return bValidSurface && bEnoughSpeed;
-}
 
 void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 {
@@ -324,6 +327,8 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 		Velocity += SlopeForce * SlideGravityForce * deltaTime;
 
 		//Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetRightVector().GetSafeNormal2D());
+		
+		Acceleration *= SlideControl;
 
 		// Apply acceleration
 		CalcVelocity(timeTick, GroundFriction * SlideFrictionFactor, false, GetMaxBrakingDeceleration());
@@ -483,7 +488,8 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 
 
 	FHitResult Hit;
-	FQuat NewRotation = FRotationMatrix::MakeFromXZ(Velocity.GetSafeNormal2D(), FVector::UpVector).ToQuat();
+	//FQuat NewRotation = FRotationMatrix::MakeFromXZ(Velocity.GetSafeNormal2D(), FVector::UpVector).ToQuat();
+	FQuat NewRotation = UpdatedComponent->GetComponentQuat();
 	SafeMoveUpdatedComponent(FVector::ZeroVector, NewRotation, false, Hit);
 }
 

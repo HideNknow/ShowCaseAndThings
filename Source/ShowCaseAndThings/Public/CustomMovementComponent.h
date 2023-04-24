@@ -111,11 +111,12 @@ private:
 
 
 	// Slide
-	UPROPERTY(EditDefaultsOnly) float MinSlideSpeed = 400.f;
-	UPROPERTY(EditDefaultsOnly) float SlideEnterImpulse = 400.f;
-	UPROPERTY(EditDefaultsOnly) float SlideGravityForce = 4000.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Slide") float MinSlideSpeed = 400.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Slide") float SlideEnterImpulse = 400.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Slide") float SlideGravityForce = 4000.f;
 	//Multiplie GroundFriction*SlideFrictionFactor
-	UPROPERTY(EditDefaultsOnly) float SlideFrictionFactor = .06f;
+	UPROPERTY(EditDefaultsOnly, Category = "Slide") float SlideFrictionFactor = .06f;
+	UPROPERTY(EditDefaultsOnly ,Category = "Slide")float SlideControl = 1.0f;
 
 
 FCollisionQueryParams GetIgnoreCharacterParams() const;
