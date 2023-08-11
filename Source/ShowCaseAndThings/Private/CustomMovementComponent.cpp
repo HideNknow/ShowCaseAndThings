@@ -264,7 +264,9 @@ bool UCustomMovementComponent::CanSlide() const
 	bool bValidSurface = GetWorld()->LineTraceTestByProfile(Start, End, ProfileName, this->GetIgnoreCharacterParams());
 	bool bEnoughSpeed = LastUpdateVelocity.Size() > MinSlideSpeed;
 
-	return bValidSurface && bEnoughSpeed;
+	//j'ai du retirer bValidSurface car il nous empeche de sauter d'un ledge quand on slide
+	//return bValidSurface && bEnoughSpeed;
+	return bEnoughSpeed;
 }
 
 void UCustomMovementComponent::EnterSlide(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode)
@@ -278,6 +280,7 @@ void UCustomMovementComponent::EnterSlide(EMovementMode PrevMode, ECustomMovemen
 
 void UCustomMovementComponent::ExitSlide()
 {
+	
 	bWantsToCrouch = false;
 	bOrientRotationToMovement = true;
 }
@@ -296,6 +299,7 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 	{
 		SetMovementMode(MOVE_Walking);
 		StartNewPhysics(deltaTime, Iterations);
+		
 		return;
 	}
 
@@ -325,10 +329,7 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 		FVector SlopeForce = CurrentFloor.HitResult.Normal;
 		SlopeForce.Z = 0.f;
 		Velocity += SlopeForce * SlideGravityForce * deltaTime;
-
-		//Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetRightVector().GetSafeNormal2D());
-		
-		Acceleration *= SlideControl;
+		Acceleration = (Acceleration * SlideControl).ProjectOnTo(UpdatedComponent->GetRightVector().GetSafeNormal());
 
 		// Apply acceleration
 		CalcVelocity(timeTick, GroundFriction * SlideFrictionFactor, false, GetMaxBrakingDeceleration());
@@ -353,11 +354,13 @@ void UCustomMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 			{
 				// pawn decided to jump up
 				const float DesiredDist = Delta.Size();
+
 				if (DesiredDist > KINDA_SMALL_NUMBER)
 				{
 					const float ActualDist = (UpdatedComponent->GetComponentLocation() - OldLocation).Size2D();
 					remainingTime += timeTick * (1.f - FMath::Min(1.f, ActualDist / DesiredDist));
 				}
+
 				StartNewPhysics(remainingTime, Iterations);
 				return;
 			}
