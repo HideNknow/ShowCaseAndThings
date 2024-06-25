@@ -1,10 +1,13 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "ShowCaseAndThingsCharacter.h"
-#include "ShowCaseAndThingsProjectile.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
 
@@ -15,7 +18,6 @@ AShowCaseAndThingsCharacter::AShowCaseAndThingsCharacter(const FObjectInitialize
 	Super(ObjectInitializer.SetDefaultSubobjectClass<UCustomMovementComponent>(ACharacter::CharacterMovementComponentName))
 
 {
-
 	CustomMovementComponent = Cast<UCustomMovementComponent>(GetCharacterMovement());
 
 
@@ -42,46 +44,67 @@ AShowCaseAndThingsCharacter::AShowCaseAndThingsCharacter(const FObjectInitialize
 
 }
 
-void AShowCaseAndThingsCharacter::BeginPlay()
-{
-	// Call the base class  
-	Super::BeginPlay();
-
-}
-
-//////////////////////////////////////////////////////////////////////////// Input
+#pragma region Input
 
 void AShowCaseAndThingsCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
 
-	// Bind jump events
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		//Jumping
+		EnhancedInputComponent->BindAction(JumpAction,		ETriggerEvent::Triggered, this, &ACharacter::Jump);
+		EnhancedInputComponent->BindAction(JumpAction,		ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
-	// Bind fire event
-	PlayerInputComponent->BindAction("PrimaryAction", IE_Pressed, this, &AShowCaseAndThingsCharacter::OnPrimaryAction);
+		//Moving
+		EnhancedInputComponent->BindAction(MoveAction,		ETriggerEvent::Triggered, this, &AShowCaseAndThingsCharacter::Move);
+
+		//Looking
+		EnhancedInputComponent->BindAction(LookAction,		ETriggerEvent::Triggered, this, &AShowCaseAndThingsCharacter::Look);
+		
+		//Interacting
+		EnhancedInputComponent->BindAction(InteractAction,	ETriggerEvent::Triggered, this, &AShowCaseAndThingsCharacter::Interact);
+	}
 
 	// Enable touchscreen input
 	EnableTouchscreenMovement(PlayerInputComponent);
 
-	// Bind movement events
-	PlayerInputComponent->BindAxis("Move Forward / Backward", this, &AShowCaseAndThingsCharacter::MoveForward);
-	PlayerInputComponent->BindAxis("Move Right / Left", this, &AShowCaseAndThingsCharacter::MoveRight);
-
 	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
 	// "Mouse" versions handle devices that provide an absolute delta, such as a mouse.
 	// "Gamepad" versions are for devices that we choose to treat as a rate of change, such as an analog joystick
-	PlayerInputComponent->BindAxis("Turn Right / Left Mouse", this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis("Look Up / Down Mouse", this, &APawn::AddControllerPitchInput);
-	PlayerInputComponent->BindAxis("Turn Right / Left Gamepad", this, &AShowCaseAndThingsCharacter::TurnAtRate);
-	PlayerInputComponent->BindAxis("Look Up / Down Gamepad", this, &AShowCaseAndThingsCharacter::LookUpAtRate);
+	// PlayerInputComponent->BindAxis("Turn Right / Left Gamepad", this, &AShowCaseAndThingsCharacter::TurnAtRate);
+	// PlayerInputComponent->BindAxis("Look Up / Down Gamepad", this, &AShowCaseAndThingsCharacter::LookUpAtRate);
 }
 
-void AShowCaseAndThingsCharacter::OnPrimaryAction()
+void AShowCaseAndThingsCharacter::Move(const FInputActionValue& Value)
 {
-	// Trigger the OnItemUsed Event
+	// input is a Vector2D
+	FVector2D MovementVector = Value.Get<FVector2D>();
+
+	if (Controller != nullptr)
+	{
+		// add movement 
+		AddMovementInput(GetActorForwardVector(), MovementVector.Y);
+		AddMovementInput(GetActorRightVector(), MovementVector.X);
+	}
+}
+
+void AShowCaseAndThingsCharacter::Look(const FInputActionValue& Value)
+{
+	// input is a Vector2D
+	FVector2D LookAxisVector = Value.Get<FVector2D>();
+
+	if (Controller != nullptr)
+	{
+		// add yaw and pitch input to controller
+		AddControllerYawInput(LookAxisVector.X);
+		AddControllerPitchInput(LookAxisVector.Y);
+	}
+}
+
+void AShowCaseAndThingsCharacter::Interact(const FInputActionValue& Value)
+{
 	OnUseItem.Broadcast();
 }
 
@@ -93,7 +116,7 @@ void AShowCaseAndThingsCharacter::BeginTouch(const ETouchIndex::Type FingerIndex
 	}
 	if ((FingerIndex == TouchItem.FingerIndex) && (TouchItem.bMoved == false))
 	{
-		OnPrimaryAction();
+		OnUseItem.Broadcast();
 	}
 	TouchItem.bIsPressed = true;
 	TouchItem.FingerIndex = FingerIndex;
@@ -110,35 +133,17 @@ void AShowCaseAndThingsCharacter::EndTouch(const ETouchIndex::Type FingerIndex, 
 	TouchItem.bIsPressed = false;
 }
 
-void AShowCaseAndThingsCharacter::MoveForward(float Value)
-{
-	if (Value != 0.0f)
-	{
-		// add movement in that direction
-		AddMovementInput(GetActorForwardVector(), Value);
-	}
-}
+// void AShowCaseAndThingsCharacter::TurnAtRate(float Rate)
+// {
+// 	// calculate delta for this frame from the rate information
+// 	AddControllerYawInput(Rate * TurnRateGamepad * GetWorld()->GetDeltaSeconds());
+// }
 
-void AShowCaseAndThingsCharacter::MoveRight(float Value)
-{
-	if (Value != 0.0f)
-	{
-		// add movement in that direction
-		AddMovementInput(GetActorRightVector(), Value);
-	}
-}
-
-void AShowCaseAndThingsCharacter::TurnAtRate(float Rate)
-{
-	// calculate delta for this frame from the rate information
-	AddControllerYawInput(Rate * TurnRateGamepad * GetWorld()->GetDeltaSeconds());
-}
-
-void AShowCaseAndThingsCharacter::LookUpAtRate(float Rate)
-{
-	// calculate delta for this frame from the rate information
-	AddControllerPitchInput(Rate * TurnRateGamepad * GetWorld()->GetDeltaSeconds());
-}
+// void AShowCaseAndThingsCharacter::LookUpAtRate(float Rate)
+// {
+// 	// calculate delta for this frame from the rate information
+// 	AddControllerPitchInput(Rate * TurnRateGamepad * GetWorld()->GetDeltaSeconds());
+// }
 
 bool AShowCaseAndThingsCharacter::EnableTouchscreenMovement(class UInputComponent* PlayerInputComponent)
 {
@@ -152,3 +157,11 @@ bool AShowCaseAndThingsCharacter::EnableTouchscreenMovement(class UInputComponen
 	
 	return false;
 }
+
+#pragma endregion
+
+void AShowCaseAndThingsCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+}
+

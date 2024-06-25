@@ -191,18 +191,18 @@ void UCustomMovementComponent::OnMovementUpdated(float DeltaSeconds, const FVect
 
 void UCustomMovementComponent::CustomDisplayDebug()
 {
-	FString strg_Movement = GetMovementName();
-	if (GetMovementName() == FString("Custom"))
-	{
-		UEnum* MyEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECustomMovementMode"), true);
-		strg_Movement = MyEnum->GetNameStringByValue(CustomMovementMode);
-	}
-	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, strg_Movement);
-
-	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, (TEXT("Vel %s"), FString::SanitizeFloat(Velocity.Size())));
-	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, (TEXT("CanCrouch %s"),CanCrouchInCurrentState() ? TEXT("true") : TEXT("false")));
-
-	DrawDebugLine(GetWorld(), GetOwner()->GetActorLocation(), GetOwner()->GetActorLocation() + (Acceleration.GetSafeNormal2D() * 100), FColor::Blue, false, 0.f, -1.f, 1.f);
+	// FString strg_Movement = GetMovementName();
+	// if (GetMovementName() == FString("Custom"))
+	// {
+	// 	UEnum* MyEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("ECustomMovementMode"), true);
+	// 	strg_Movement = MyEnum->GetNameStringByValue(CustomMovementMode);
+	// }
+	// GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, strg_Movement);
+	//
+	// GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, (TEXT("Vel %s"), FString::SanitizeFloat(Velocity.Size())));
+	// GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, (TEXT("CanCrouch %s"),CanCrouchInCurrentState() ? TEXT("true") : TEXT("false")));
+	//
+	// DrawDebugLine(GetWorld(), GetOwner()->GetActorLocation(), GetOwner()->GetActorLocation() + (Acceleration.GetSafeNormal2D() * 100), FColor::Blue, false, 0.f, -1.f, 1.f);
 
 }
 
