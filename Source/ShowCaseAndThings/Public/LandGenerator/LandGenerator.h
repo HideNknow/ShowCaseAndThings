@@ -66,16 +66,12 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere , Category = "Land")
 	UMaterialInterface* LandMaterial;
-	
-private:
 
-	UFUNCTION(BlueprintCallable , Category = "Land Generation" , meta = (AllowPrivateAccess = "true"))
-	void GenerateSection(int SectionLocationX , int SectionLocationY);
-	
-	UPROPERTY(BlueprintReadOnly , VisibleAnywhere , Category = "Land Generation" , meta = (AllowPrivateAccess = "true"))
-	TMap<FIntPoint , int> GeneratedSection;
+	UPROPERTY(BlueprintReadOnly , VisibleAnywhere , Category = "Land")
+	float SectionReplaceDistance;
 
-
+	UPROPERTY(BlueprintReadOnly , VisibleAnywhere , Category = "Land")
+	int MaxNumberOfSections;
 	
 protected:
 	// Called when the game starts or when spawned
@@ -95,14 +91,20 @@ protected:
 
 	int LastSectionIndex;
 	
-	UFUNCTION(BlueprintCallable)
-	int GetFurtherSectionIndex();
+	UFUNCTION(BlueprintCallable , meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils")
+	FIntVector GetFurthestSectionIndex(FVector2f Location); //return the furthest section index from a location
 
+	UFUNCTION(BlueprintCallable , meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils")
+	TArray<FIntPoint> GetSectionsInRadius(FVector2f Location);
+	
 	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
 	FVector2f GetSectionCenterLocation(FIntPoint SectionLocation);
 
 	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
-	FIntPoint GetSectionByLocation(FVector ActorLocation);
+	FIntPoint GetSectionByLocation(FVector2f ActorLocation);
+
+	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
+	bool IsSectionInBounds(FIntPoint SectionLocation);
 	
 public:	
 	// Called every frame
@@ -127,11 +129,9 @@ public:
 
 	UFUNCTION(BlueprintCallable , Category = "Land Generation Asynch" , meta = (AllowPrivateAccess = "true") , BlueprintPure)
 	bool IsSectionInGeneration(FIntPoint SectionLocation);
+	
 	UFUNCTION(BlueprintCallable , Category = "Land Generation Asynch" , meta = (AllowPrivateAccess = "true") , BlueprintPure)
 	bool CanGenerateSection(FIntPoint SectionLocation);
-	
-protected:
-	void OnThreadFinished(FIntPoint SectionLocation);
 	
 public:
 	UPROPERTY(BlueprintReadWrite , EditDefaultsOnly , Category = "Land Generation Asynch")
@@ -146,7 +146,9 @@ private:
 	
 	TMap<FIntPoint , LandGeneratorThread*> InGenerationMap;
 	
-	
 	TArray<FIntPoint> SectionsToGenerate;
+
+	UPROPERTY(BlueprintReadOnly , VisibleAnywhere , Category = "Land Generation" , meta = (AllowPrivateAccess = "true"))
+	TMap<FIntPoint , int> GeneratedSection;
 
 };
