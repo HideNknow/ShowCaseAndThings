@@ -92,7 +92,7 @@ protected:
 	int LastSectionIndex;
 	
 	UFUNCTION(BlueprintCallable , meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils")
-	FIntVector GetFurthestSectionIndex(FVector2f Location); //return the furthest section index from a location
+	FIntVector GetFurthestSectionIndex(FVector2f Location); FIntVector GetFurthestSectionIndex(FVector Location); //return the furthest section index from a location
 
 	UFUNCTION(BlueprintCallable , meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils")
 	TArray<FIntPoint> GetSectionsInRadius(FVector2f Location);
@@ -101,10 +101,17 @@ protected:
 	FVector2f GetSectionCenterLocation(FIntPoint SectionLocation);
 
 	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
-	FIntPoint GetSectionByLocation(FVector2f ActorLocation);
+	FIntPoint GetSectionByLocation(FVector2f ActorLocation); FIntPoint GetSectionByLocation(FVector ActorLocation);
 
 	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
+	int SectionDistance(FIntPoint Section1 , FIntPoint Section2);
+	
+	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
 	bool IsSectionInBounds(FIntPoint SectionLocation);
+
+	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
+	FIntPoint GetPlayerTile();
+
 	
 public:	
 	// Called every frame
@@ -145,10 +152,15 @@ private:
 	TArray<LandGeneratorThread*> WorkingThreads; //All threads that are not working
 	
 	TMap<FIntPoint , LandGeneratorThread*> InGenerationMap;
-	
+
+	UPROPERTY(BlueprintReadOnly , VisibleAnywhere , Category = "Land Generation" , meta = (AllowPrivateAccess = "true"))
 	TArray<FIntPoint> SectionsToGenerate;
 
 	UPROPERTY(BlueprintReadOnly , VisibleAnywhere , Category = "Land Generation" , meta = (AllowPrivateAccess = "true"))
 	TMap<FIntPoint , int> GeneratedSection;
 
+#pragma region Debug
+	UFUNCTION(BlueprintCallable , Category = "Land Generation | Debug")
+	void DrawDebugSection(FIntPoint SectionLocation ,float LifeTime = 0.1f , FColor Color = FColor::Red);
+#pragma endregion
 };
