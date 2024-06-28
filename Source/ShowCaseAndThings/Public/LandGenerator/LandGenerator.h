@@ -42,7 +42,6 @@ public:
 	UPROPERTY( BlueprintReadWrite , EditAnywhere , Category = "Settings | Tile")
 	float SectionSize = 500.0f;
 	
-	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings | Tile")
 	int SectionVertexCount = 10;
 
@@ -72,6 +71,15 @@ public:
 
 	UPROPERTY(BlueprintReadOnly , VisibleAnywhere , Category = "Land")
 	int MaxNumberOfSections;
+
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Land | Settings | Generation")
+	bool bUpdateAllThreadAtOnce = false; // if true we will update all threads at once every frame
+
+	UPROPERTY()
+	int LastWorkingThreadChecked = -1;
+	
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Land | Settings | Generation")
+	bool bFastFindSectionToReplace = true; //if true we will use the closest section to the furthest minimal distance section to be replaced when creating a new one.
 	
 protected:
 	// Called when the game starts or when spawned
@@ -143,7 +151,6 @@ public:
 public:
 	UPROPERTY(BlueprintReadWrite , EditDefaultsOnly , Category = "Land Generation Asynch")
 	int MaxThreadNumber = 4;
-
 	int NumberOfThreads = 0;
 	
 private:
@@ -163,4 +170,5 @@ private:
 	UFUNCTION(BlueprintCallable , Category = "Land Generation | Debug")
 	void DrawDebugSection(FIntPoint SectionLocation ,float LifeTime = 0.1f , FColor Color = FColor::Red);
 #pragma endregion
+	
 };

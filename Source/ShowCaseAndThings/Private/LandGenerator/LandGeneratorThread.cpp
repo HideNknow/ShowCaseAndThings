@@ -8,7 +8,7 @@ LandGeneratorThread::LandGeneratorThread(ALandGenerator* InLandGenerator, FIntPo
 	: LandGenerator(InLandGenerator), SectionLocation(sectionLocation), SectionVertexCount(InLandGenerator->SectionVertexCount), VertexSpacing(InLandGenerator->VertexSpacing)
 	, NoiseAmplitude(InLandGenerator->NoiseAmplitude), NoiseScale(InLandGenerator->NoiseScale) , Seed(InLandGenerator->Seed) , Indices(InLandGenerator->Indices)
 {
-	Thread = FRunnableThread::Create(this, TEXT("FLandGeneratorThread"), 0, TPri_Lowest , FPlatformAffinity::GetPoolThreadMask());
+	Thread = FRunnableThread::Create(this, TEXT("FLandGeneratorThread"), 0, EThreadPriority::TPri_Normal , FPlatformAffinity::GetPoolThreadMask());
 }
 
 LandGeneratorThread::~LandGeneratorThread()
