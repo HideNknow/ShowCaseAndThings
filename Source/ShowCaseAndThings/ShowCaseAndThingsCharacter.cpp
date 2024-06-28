@@ -41,6 +41,7 @@ AShowCaseAndThingsCharacter::AShowCaseAndThingsCharacter(const FObjectInitialize
 	Mesh1P->CastShadow = false;
 	Mesh1P->SetRelativeRotation(FRotator(1.9f, -19.19f, 5.2f));
 	Mesh1P->SetRelativeLocation(FVector(-0.5f, -4.4f, -155.7f));
+	
 
 }
 
@@ -48,6 +49,7 @@ AShowCaseAndThingsCharacter::AShowCaseAndThingsCharacter(const FObjectInitialize
 
 void AShowCaseAndThingsCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("SetupPlayerInputComponent")));
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
 
@@ -65,10 +67,18 @@ void AShowCaseAndThingsCharacter::SetupPlayerInputComponent(class UInputComponen
 		
 		//Interacting
 		EnhancedInputComponent->BindAction(InteractAction,	ETriggerEvent::Triggered, this, &AShowCaseAndThingsCharacter::Interact);
+
+		//Crouching
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Triggered, this->CustomMovementComponent, &UCustomMovementComponent::CrouchPressed);
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this->CustomMovementComponent, &UCustomMovementComponent::CrouchReleased);
+
+		//Sprinting
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this->CustomMovementComponent, &UCustomMovementComponent::SprintPressed);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this->CustomMovementComponent, &UCustomMovementComponent::SprintReleased);
 	}
 
 	// Enable touchscreen input
-	EnableTouchscreenMovement(PlayerInputComponent);
+	//EnableTouchscreenMovement(PlayerInputComponent);
 
 	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
 	// "Mouse" versions handle devices that provide an absolute delta, such as a mouse.
@@ -99,7 +109,7 @@ void AShowCaseAndThingsCharacter::Look(const FInputActionValue& Value)
 	{
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
-		AddControllerPitchInput(LookAxisVector.Y);
+		AddControllerPitchInput(LookAxisVector.Y * -1.0f);
 	}
 }
 
@@ -162,6 +172,14 @@ bool AShowCaseAndThingsCharacter::EnableTouchscreenMovement(class UInputComponen
 
 void AShowCaseAndThingsCharacter::BeginPlay()
 {
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
 	Super::BeginPlay();
+	
 }
 

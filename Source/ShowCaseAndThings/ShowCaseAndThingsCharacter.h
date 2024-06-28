@@ -6,11 +6,11 @@
 #include "GameFramework/Character.h"
 
 #include "Public/CustomMovementComponent.h"
+#include "InputAction.h"
 
 #include "ShowCaseAndThingsCharacter.generated.h"
 
 struct FInputActionValue;
-class UInputComponent;
 
 class USkeletalMeshComponent;
 class USceneComponent;
@@ -44,6 +44,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
 	class UInputAction*			InteractAction;
 
+	// Crouch Input Action
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
+	class UInputAction*			CrouchAction;
+
+	//Sprint Input Action
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"));
+	class UInputAction*			SprintAction;
+	
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction*			LookAction;
@@ -72,6 +80,7 @@ protected:
 		FVector Location;
 		bool bMoved;
 	};
+	
 	void BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
 	void EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
 	TouchData	TouchItem;
