@@ -45,5 +45,4 @@ protected:
 	void GenerateSectionVert(TArray<FVector>& InVertices , TArray<FVector2D>& InUvs);
 	float HeightNoise2D(FVector2D Position) const;
 	void GenerateSectionTangentAndNormals(TArray<FVector>& InVertices, TArray<FVector>& InNormals, TArray<FVector2D>& InUVs, TArray<FProcMeshTangent>& Tangents);
-	
 };

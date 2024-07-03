@@ -14,13 +14,15 @@ ALandGenerator::ALandGenerator()
 
 	LandMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("LandMesh"));
 	LandMesh->SetupAttachment(this->GetRootComponent());
-	LandMesh->bUseAsyncCooking = true;
+	LandMesh->bUseAsyncCooking = false;
 }
 
 // Called when the game starts or when spawned
 void ALandGenerator::BeginPlay()
 {
 	VertexSpacing = SectionSize /( SectionVertexCount -1);
+
+	GenerateSectionIndices();
 	
 	for (int i = 0; i < MaxThreadNumber; ++i)
 	{
@@ -28,10 +30,11 @@ void ALandGenerator::BeginPlay()
 	}
 	FreeThread = ThreadArray;
 
-	GenerateSectionIndices(Indices);
 
 	SectionReplaceDistance = SectionSize * ((SectionCount.X + SectionCount.Y) /2);
 	MaxNumberOfSections = SectionCount.X * SectionCount.Y;
+
+	this->SetActorTickEnabled(true);
 	
 	Super::BeginPlay();
 }
@@ -47,63 +50,7 @@ void ALandGenerator::BeginDestroy()
 	Super::BeginDestroy();
 }
 
-void ALandGenerator:: GenerateSectionVert(FIntVector2 SectionLocation, TArray<FVector>& InVertices, TArray<FVector2D>& InUvs)
-{
-
-	FVector VertOffset = FVector(SectionLocation.X * (SectionVertexCount -1), SectionLocation.Y * (SectionVertexCount -1), 0) * SectionSize;
-	FVector Vert;
-	
-	for (int32 Y = -1 ; Y <= SectionVertexCount ; Y++)
-	{
-		for (int32 X = -1 ; X <= SectionVertexCount ; X++)
-		{
-			Vert.X = X * SectionSize + VertOffset.X;
-			Vert.Y = Y * SectionSize + VertOffset.Y;
-			Vert.Z = HeightNoise2D(FVector2D(Vert.X, Vert.Y));
-			InVertices.Add(Vert);
-
-			FVector2D Uv = FVector2D(( SectionVertexCount- 1) * SectionLocation.X + X,  (SectionVertexCount - 1) * SectionLocation.Y + Y) * (SectionSize / 100);
-			InUvs.Add(Uv);
-		}
-	}
-}
-
-void ALandGenerator::GenerateSectionTangentAndNormals(TArray<FVector>& InVertices,TArray<FVector>& InNormals, TArray<FVector2D>& InUVs, TArray<FProcMeshTangent>& Tangents)
-{
-	//Calculate normals
-	TArray<FVector> TileNormal;
-	TArray<FProcMeshTangent> TileTangent;
-	
-	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(InVertices , Indices , InUVs , TileNormal , TileTangent);
-	
-	int index = 0;
-	TArray<FVector>				OutVertices;
-	TArray<FVector2D>			OutUvs;
-	TArray<FVector>				OutNormals;
-	TArray<FProcMeshTangent>	OutTangents = Tangents;
-	
-	for (int32 Y = -1; Y <= SectionVertexCount; ++Y)
-	{
-		for (int32 X = -1; X <= SectionVertexCount; ++X)
-		{
-			if (X > -1 && X < SectionVertexCount && Y > -1 && Y < SectionVertexCount)
-			{
-				OutVertices.Add(InVertices[index]);
-				OutUvs.Add(InUVs[index]);
-				OutNormals.Add(TileNormal[index]);
-				OutTangents.Add(TileTangent[index]);
-			}
-			index++;
-		}
-	}
-	
-	InVertices	= OutVertices;
-	InNormals	= OutNormals;
-	InUVs		= OutUvs;
-	Tangents	= OutTangents;
-};
-
-void ALandGenerator::GenerateSectionIndices(TArray<int32>& InIndices)
+void ALandGenerator::GenerateSectionIndices()
 {
 	for (int32 Y = 0 ; Y <= SectionVertexCount ; ++Y)
 	{
@@ -116,15 +63,14 @@ void ALandGenerator::GenerateSectionIndices(TArray<int32>& InIndices)
 			int Fifth = X + (Y + 1) * (SectionVertexCount +2) + 1;
 			int Sixth = X + Y * (SectionVertexCount +2) + 1;
 
-			InIndices.Add(First);
-			InIndices.Add(Second);
-			InIndices.Add(Third);
-			InIndices.Add(Fourth);
-			InIndices.Add(Fifth);
-			InIndices.Add(Sixth);
+			Indices.Add(First);
+			Indices.Add(Second);
+			Indices.Add(Third);
+			Indices.Add(Fourth);
+			Indices.Add(Fifth);
+			Indices.Add(Sixth);
 		}
 	}
-
 
 	for (int32 Y = 0; Y <= SectionVertexCount - 2; ++Y)
 	{
@@ -145,6 +91,7 @@ void ALandGenerator::GenerateSectionIndices(TArray<int32>& InIndices)
 			FixedIndices.Add(Sixth);
 		}
 	}
+	
 }
 
 float ALandGenerator::HeightNoise2D(FVector2D Position) const
@@ -163,51 +110,55 @@ void ALandGenerator::Tick(float DeltaTime)
 	switch (bUpdateAllThreadAtOnce)
 	{
 	case true :
-		for (int index = WorkingThreads.Num() - 1; index >= 0; --index)
-	{
-		if (WorkingThreads[index]->bInputReady == false)
-		{
-			InGenerationMap.Remove(WorkingThreads[index]->SectionLocation);
-			if (LastSectionIndex < MaxNumberOfSections)
-			{
-				GeneratedSection.Add(WorkingThreads[index]->SectionLocation, LastSectionIndex);
-				LandMesh->CreateMeshSection(LastSectionIndex, WorkingThreads[index]->returnVal.Vertices, FixedIndices
-				, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
-				, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
-				LandMesh->SetMaterial(LastSectionIndex, LandMaterial);
-				LastSectionIndex++;
-				//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Section %d %d generated"), WorkingThreads[index]->SectionLocation.X, WorkingThreads[index]->SectionLocation.Y));
-			}
-			else
-			{
-				//Player Location
-				FVector Origin = UGameplayStatics::GetPlayerPawn(this, 0)->GetActorLocation();
-				
-				FIntVector3 FurthestSectionIndex = GetFurthestSectionIndex(FVector2f(Origin.X, Origin.Y));
-
-				GeneratedSection.Remove(FIntPoint(FurthestSectionIndex.X, FurthestSectionIndex.Y));
-
-				LandMesh->ClearMeshSection(FurthestSectionIndex.Z);
-				LandMesh->CreateMeshSection(FurthestSectionIndex.Z, WorkingThreads[index]->returnVal.Vertices, FixedIndices
-				, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
-				, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
-				
-				GeneratedSection.Add(WorkingThreads[index]->SectionLocation, FurthestSectionIndex.Z);
-
-				
-				/*
-				LandMesh->UpdateMeshSection(FurthestSectionIndex.Z, WorkingThreads[index]->returnVal.Vertices
-				, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
-				, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents);
-				*/
-				
-			}
-			
-			LandGeneratorThread* Thread = WorkingThreads[index];
-			WorkingThreads.RemoveAt(index);
-			FreeThread.Add(Thread);
-		}
-	}
+	// 	for (int index = WorkingThreads.Num() - 1; index >= 0; --index)
+	// {
+	// 	if (WorkingThreads[index]->bInputReady == false)
+	// 	{
+	// 		InGenerationMap.Remove(WorkingThreads[index]->SectionLocation);
+	// 		if (LastSectionIndex < MaxNumberOfSections)
+	// 		{
+	// 			GeneratedSection.Add(WorkingThreads[index]->SectionLocation, LastSectionIndex);
+	// 			LandMesh->CreateMeshSection(LastSectionIndex, WorkingThreads[index]->returnVal.Vertices, FixedIndices
+	// 			, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
+	// 			, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
+	// 			LandMesh->SetMaterial(LastSectionIndex, LandMaterial);
+	// 			LastSectionIndex++;
+	//
+	// 			if (FixedIndices == Indices)
+	// 			{
+	// 				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Fixed Indices are equal to Indices")));
+	// 			}
+	// 		}
+	// 		else
+	// 		{
+	// 			//Player Location
+	// 			FVector Origin = UGameplayStatics::GetPlayerPawn(this, 0)->GetActorLocation();
+	// 			
+	// 			FIntVector3 FurthestSectionIndex = GetFurthestSectionIndex(FVector2f(Origin.X, Origin.Y));
+	//
+	// 			GeneratedSection.Remove(FIntPoint(FurthestSectionIndex.X, FurthestSectionIndex.Y));
+	//
+	// 			//LandMesh->ClearMeshSection(FurthestSectionIndex.Z);
+	// 			//LandMesh->CreateMeshSection(FurthestSectionIndex.Z, WorkingThreads[index]->returnVal.Vertices, FixedIndices
+	// 			//, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
+	// 			//, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
+	// 			
+	// 			GeneratedSection.Add(WorkingThreads[index]->SectionLocation, FurthestSectionIndex.Z);
+	//
+	// 			
+	// 			
+	// 			LandMesh->UpdateMeshSection(FurthestSectionIndex.Z, WorkingThreads[index]->returnVal.Vertices
+	// 			, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
+	// 			, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents);
+	// 			
+	// 			
+	// 		}
+	// 		
+	// 		LandGeneratorThread* Thread = WorkingThreads[index];
+	// 		WorkingThreads.RemoveAt(index);
+	// 		FreeThread.Add(Thread);
+	// 	}
+	// }
 		break;
 	case false:
 		
@@ -226,9 +177,15 @@ void ALandGenerator::Tick(float DeltaTime)
 			if (LastSectionIndex < MaxNumberOfSections)
 			{
 				GeneratedSection.Add(WorkingThreads[LastWorkingThreadChecked]->SectionLocation, LastSectionIndex);
+
+				// UKismetProceduralMeshLibrary::CalculateTangentsForMesh(WorkingThreads[LastWorkingThreadChecked]->returnVal.Vertices, Indices , WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs ,
+				 //	WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals , WorkingThreads[LastWorkingThreadChecked]->returnVal.Tangents);
+				
+				
 				LandMesh->CreateMeshSection(LastSectionIndex, WorkingThreads[LastWorkingThreadChecked]->returnVal.Vertices, FixedIndices
 				, WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals, WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs
 				, WorkingThreads[LastWorkingThreadChecked]->returnVal.Colors, WorkingThreads[LastWorkingThreadChecked]->returnVal.Tangents, true);
+				
 				LandMesh->SetMaterial(LastSectionIndex, LandMaterial);
 				LastSectionIndex++;
 				//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Section %d %d generated"), WorkingThreads[index]->SectionLocation.X, WorkingThreads[index]->SectionLocation.Y));
@@ -243,12 +200,12 @@ void ALandGenerator::Tick(float DeltaTime)
 				GeneratedSection.Remove(FIntPoint(FurthestSectionIndex.X, FurthestSectionIndex.Y));
 
 				LandMesh->ClearMeshSection(FurthestSectionIndex.Z);
+				
 				LandMesh->CreateMeshSection(FurthestSectionIndex.Z, WorkingThreads[LastWorkingThreadChecked]->returnVal.Vertices, FixedIndices
 				, WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals, WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs
 				, WorkingThreads[LastWorkingThreadChecked]->returnVal.Colors, WorkingThreads[LastWorkingThreadChecked]->returnVal.Tangents, true);
 				
 				GeneratedSection.Add(WorkingThreads[LastWorkingThreadChecked]->SectionLocation, FurthestSectionIndex.Z);
-
 				
 				/*
 				LandMesh->UpdateMeshSection(FurthestSectionIndex.Z, WorkingThreads[index]->returnVal.Vertices
@@ -305,9 +262,10 @@ FIntVector ALandGenerator::GetFurthestSectionIndex(FVector2f Location)
 	// 	}
 	// }
 
-
+	int i = 0;
 	for (auto Element : GeneratedSection)
 	{
+		i++;
 		Distance = SectionDistance(GetPlayerTile(), Element.Key);
 		if ( Distance > FurtherDistance)
 		{
@@ -317,11 +275,12 @@ FIntVector ALandGenerator::GetFurthestSectionIndex(FVector2f Location)
 				if (Distance > SectionDistance(SectionCount/2, FIntPoint(0,0)))
 				{
 					GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red,
-						FString::Printf(TEXT("Furthest Section %d %d is far enought at %d"), Element.Key.X, Element.Key.Y , Distance));
-					FurthestLocation = Element.Key;		
+						FString::Printf(TEXT("Furthest Section %d %d is far enought at %d"), Element.Key.X, Element.Key.Y , i));
+					FurthestLocation = Element.Key;
+					
+					GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, FString::Printf(TEXT("Looped %d instead of %d"),i ,GeneratedSection.Num()));
 					return FIntVector(FurthestLocation.X, FurthestLocation.Y, GeneratedSection[FurthestLocation]);
 				}
-				break;
 				
 			case false:
 				FurtherDistance = Distance;
@@ -330,16 +289,6 @@ FIntVector ALandGenerator::GetFurthestSectionIndex(FVector2f Location)
 			}
 
 		}
-	}
-
-	
-	if (!GeneratedSection.Contains(FurthestLocation))
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, FString::Printf(TEXT("Furthest Section %d %d not generated yet"), FurthestLocation.X, FurthestLocation.Y));
-	}
-	else if (Distance <  SectionDistance(SectionCount/2, FIntPoint(0,0)))
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 01.f, FColor::Red, FString::Printf(TEXT("Furthest Section is at %d section"), Distance));
 	}
 	
 	return FIntVector(FurthestLocation.X, FurthestLocation.Y, GeneratedSection[FurthestLocation]);

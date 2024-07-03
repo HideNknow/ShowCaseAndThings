@@ -26,10 +26,15 @@ uint32 LandGeneratorThread::Run()
 	while (bInputReady)
 	{
 		//Promise->SetValue(FProceduralMeshThings());
-		returnVal = FProceduralMeshThings();
-		GenerateSectionVert(returnVal.Vertices, returnVal.UVs);
-		GenerateSectionTangentAndNormals(returnVal.Vertices, returnVal.Normals, returnVal.UVs, returnVal.Tangents);
+		//returnVal = FProceduralMeshThings();
+		TArray<FVector> Vertices;
+		TArray<FVector> Normals;
+		GenerateSectionVert(Vertices, returnVal.UVs);
+		GenerateSectionTangentAndNormals(Vertices, Normals, returnVal.UVs, returnVal.Tangents);
 		
+		
+		returnVal.Vertices = Vertices;
+		returnVal.Normals = Normals;
 		bInputReady = false;
 	}
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Finished Run")));
@@ -56,8 +61,6 @@ void LandGeneratorThread:: GenerateSectionVert(TArray<FVector>& InVertices , TAr
 
 	FVector VertOffset = FVector(SectionLocation.X * (SectionVertexCount.X -1), SectionLocation.Y * (SectionVertexCount.Y -1), 0) * VertexSpacing;
 	FVector Vert;
-
-	
 	
 	for (int32 Y = -1 ; Y <= SectionVertexCount.Y ; Y++)
 	{
@@ -83,17 +86,16 @@ float LandGeneratorThread::HeightNoise2D(FVector2D Position) const
 
 void LandGeneratorThread::GenerateSectionTangentAndNormals(TArray<FVector>& InVertices,TArray<FVector>& InNormals, TArray<FVector2D>& InUVs, TArray<FProcMeshTangent>& Tangents)
 {
-	//Calculate normals
-	TArray<FVector> TileNormal;
-	TArray<FProcMeshTangent> TileTangent;
-	
-	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(InVertices , Indices , InUVs , TileNormal , TileTangent);
-	
 	int index = 0;
+	
+	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(InVertices, Indices, InUVs, InNormals, Tangents);
+	
 	TArray<FVector>				OutVertices;
 	TArray<FVector2D>			OutUvs;
 	TArray<FVector>				OutNormals;
-	TArray<FProcMeshTangent>	OutTangents = Tangents;
+	TArray<FProcMeshTangent>	OutTangents;
+
+	
 	
 	for (int32 Y = -1; Y <= SectionVertexCount.Y; ++Y)
 	{
@@ -103,8 +105,8 @@ void LandGeneratorThread::GenerateSectionTangentAndNormals(TArray<FVector>& InVe
 			{
 				OutVertices.Add(InVertices[index]);
 				OutUvs.Add(InUVs[index]);
-				OutNormals.Add(TileNormal[index]);
-				OutTangents.Add(TileTangent[index]);
+				OutNormals.Add(InNormals[index]);
+				OutTangents.Add(Tangents[index]);
 			}
 			index++;
 		}
@@ -114,4 +116,4 @@ void LandGeneratorThread::GenerateSectionTangentAndNormals(TArray<FVector>& InVe
 	InNormals	= OutNormals;
 	InUVs		= OutUvs;
 	Tangents	= OutTangents;
-};
+}

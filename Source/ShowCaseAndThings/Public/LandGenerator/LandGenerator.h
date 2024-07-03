@@ -86,13 +86,7 @@ protected:
 	virtual void BeginPlay() override;
 	
 	UFUNCTION(Category = "Land Generation")
-	void GenerateSectionVert(FInt32Vector2 SectionLocation , TArray<FVector> &Vertices, TArray<FVector2D> &Uvs);
-
-	UFUNCTION(Category = "Land Generation")
-	void GenerateSectionIndices(TArray<int32> &Indices);
-
-	UFUNCTION(Category = "Land Generation")
-	void GenerateSectionTangentAndNormals(TArray<FVector>& InVertices, TArray<FVector>& InNormals, TArray<FVector2D>& InUVs, TArray<FProcMeshTangent>& Tangents);
+	void GenerateSectionIndices();
 	
 	UFUNCTION(Category = "Land Generation")
 	float HeightNoise2D(FVector2D Position) const;
@@ -131,6 +125,8 @@ public:
 	//base indices don't need to be recalculated 
 	TArray<int32> Indices;
 	TArray<int32> FixedIndices;
+
+	
 
 	//////////////////////////////Threading//////////////////////////////
 	
