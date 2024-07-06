@@ -94,8 +94,6 @@ void LandGeneratorThread::GenerateSectionTangentAndNormals(TArray<FVector>& InVe
 	TArray<FVector2D>			OutUvs;
 	TArray<FVector>				OutNormals;
 	TArray<FProcMeshTangent>	OutTangents;
-
-	
 	
 	for (int32 Y = -1; Y <= SectionVertexCount.Y; ++Y)
 	{
