@@ -72,6 +72,7 @@ void LandGeneratorThread:: GenerateSectionVert(TArray<FVector>& InVertices , TAr
 			InVertices.Add(Vert);
 
 			FVector2D Uv = FVector2D(( SectionVertexCount.X - 1) * SectionLocation.X + X,  (SectionVertexCount.Y - 1) * SectionLocation.Y + Y) * (VertexSpacing / 100);
+			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Uv : %s"), *Uv.ToString()));
 			InUvs.Add(Uv);
 		}
 	}

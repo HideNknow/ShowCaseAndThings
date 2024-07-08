@@ -3,6 +3,9 @@
 
 #include "LandGenerator/LandGenerator.h"
 #include "LandGenerator/LandGeneratorThread.h"
+
+
+
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 
@@ -14,7 +17,11 @@ ALandGenerator::ALandGenerator()
 
 	LandMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("LandMesh"));
 	LandMesh->SetupAttachment(this->GetRootComponent());
-	LandMesh->bUseAsyncCooking = false;
+	LandMesh->bUseAsyncCooking = true;
+
+	LandMeshInstances = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("LandMeshInstances"));
+	LandMeshInstances->SetupAttachment(this->GetRootComponent());
+	
 }
 
 // Called when the game starts or when spawned
@@ -106,59 +113,101 @@ void ALandGenerator::Tick(float DeltaTime)
 	GEngine->AddOnScreenDebugMessage(-1, this->GetActorTickInterval(), FColor::Red, FString::Printf(TEXT("Free threads: %d"), FreeThread.Num()));
 	GEngine->AddOnScreenDebugMessage(-1, this->GetActorTickInterval(), FColor::Red, FString::Printf(TEXT("Total threads: %d"), ThreadArray.Num()));
 	GEngine->AddOnScreenDebugMessage(-1, this->GetActorTickInterval(), FColor::Red, FString::Printf(TEXT("Sections to generate: %d"), SectionsToGenerate.Num()));
+	
+	UpdateThread();//Update the thread to check if the thread is done generating the section
 
+	GenerateSectionAsync(); //Iterate over the sections to generate and check if we can assign them to workers
+
+	//So now we need to generate vegetations and other stuffs
+
+	
+	
+	Super::Tick(DeltaTime);
+}
+
+void ALandGenerator::GenerateSectionAsync()
+{
+	if (SectionsToGenerate.Num() <= 0 &&  FreeThread.Num() <= 0)
+	{
+		return;
+	}
+	
+	int index = FreeThread.Num() - 1;
+	while (index >= 0)
+	{
+		int indexToProcess = SectionsToGenerate.Num() - 1;
+		bool bfoundAnIndexToProcess = false;
+
+		while (!bfoundAnIndexToProcess && indexToProcess >= 0)
+		{
+			if (InGenerationMap.Contains(SectionsToGenerate[indexToProcess]) || GeneratedSection.Contains(SectionsToGenerate[indexToProcess]) || !IsSectionInBounds(SectionsToGenerate[indexToProcess]))
+			{
+				//Log text Section is generating
+				UE_LOG(LogTemp, Warning, TEXT("Section %d %d already generating of index : %d"), SectionsToGenerate[indexToProcess].X , SectionsToGenerate[indexToProcess].Y , indexToProcess);
+				SectionsToGenerate.Pop();
+			}
+			else
+			{
+				bfoundAnIndexToProcess = true;
+				LandGeneratorThread* Thread = FreeThread.Pop();
+				WorkingThreads.Add(Thread);
+				InGenerationMap.Add(SectionsToGenerate[indexToProcess], Thread);
+				
+				Thread->SectionLocation = SectionsToGenerate[indexToProcess];
+				SectionsToGenerate.Pop();
+
+				Thread->bInputReady = true;
+				Thread->Run();
+
+			}
+			--indexToProcess ;
+		}
+		--index;
+	}
+}
+
+void ALandGenerator::UpdateThread()
+{
 	switch (bUpdateAllThreadAtOnce)
 	{
 	case true :
-	// 	for (int index = WorkingThreads.Num() - 1; index >= 0; --index)
-	// {
-	// 	if (WorkingThreads[index]->bInputReady == false)
-	// 	{
-	// 		InGenerationMap.Remove(WorkingThreads[index]->SectionLocation);
-	// 		if (LastSectionIndex < MaxNumberOfSections)
-	// 		{
-	// 			GeneratedSection.Add(WorkingThreads[index]->SectionLocation, LastSectionIndex);
-	// 			LandMesh->CreateMeshSection(LastSectionIndex, WorkingThreads[index]->returnVal.Vertices, FixedIndices
-	// 			, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
-	// 			, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
-	// 			LandMesh->SetMaterial(LastSectionIndex, LandMaterial);
-	// 			LastSectionIndex++;
-	//
-	// 			if (FixedIndices == Indices)
-	// 			{
-	// 				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Fixed Indices are equal to Indices")));
-	// 			}
-	// 		}
-	// 		else
-	// 		{
-	// 			//Player Location
-	// 			FVector Origin = UGameplayStatics::GetPlayerPawn(this, 0)->GetActorLocation();
-	// 			
-	// 			FIntVector3 FurthestSectionIndex = GetFurthestSectionIndex(FVector2f(Origin.X, Origin.Y));
-	//
-	// 			GeneratedSection.Remove(FIntPoint(FurthestSectionIndex.X, FurthestSectionIndex.Y));
-	//
-	// 			//LandMesh->ClearMeshSection(FurthestSectionIndex.Z);
-	// 			//LandMesh->CreateMeshSection(FurthestSectionIndex.Z, WorkingThreads[index]->returnVal.Vertices, FixedIndices
-	// 			//, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
-	// 			//, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
-	// 			
-	// 			GeneratedSection.Add(WorkingThreads[index]->SectionLocation, FurthestSectionIndex.Z);
-	//
-	// 			
-	// 			
-	// 			LandMesh->UpdateMeshSection(FurthestSectionIndex.Z, WorkingThreads[index]->returnVal.Vertices
-	// 			, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
-	// 			, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents);
-	// 			
-	// 			
-	// 		}
-	// 		
-	// 		LandGeneratorThread* Thread = WorkingThreads[index];
-	// 		WorkingThreads.RemoveAt(index);
-	// 		FreeThread.Add(Thread);
-	// 	}
-	// }
+	 	for (int index = WorkingThreads.Num() - 1; index >= 0; --index) //On verifie si tout les threads sont pret en iterant sur chacun d'eux.
+	 	{																//trop de threads en meme temps = trop de sections a generer en meme temps
+	 		if (WorkingThreads[index]->bInputReady == false)
+	 		{
+	 			InGenerationMap.Remove(WorkingThreads[index]->SectionLocation);
+	 			
+	 			if (LastSectionIndex < MaxNumberOfSections) //Si on a pas atteint le nombre maximum de sections on ajoute la section
+	 			{
+	 				GeneratedSection.Add(WorkingThreads[index]->SectionLocation, LastSectionIndex);
+	 				LandMesh->CreateMeshSection(LastSectionIndex, WorkingThreads[index]->returnVal.Vertices, FixedIndices
+					 , WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
+					 , WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
+	 				LandMesh->SetMaterial(LastSectionIndex, LandMaterial);
+	 				LastSectionIndex++;
+	 			}
+	 			else //Sinon on recreer la section la plus eloignee
+	 			{
+	 			    //Player Location
+	 			    FVector Origin = UGameplayStatics::GetPlayerPawn(this, 0)->GetActorLocation();
+	 			    
+	 			    FIntVector3 FurthestSectionIndex = GetFurthestSectionIndex(FVector2f(Origin.X, Origin.Y));
+	            	
+	 			    GeneratedSection.Remove(FIntPoint(FurthestSectionIndex.X, FurthestSectionIndex.Y));
+	            	
+	 			    LandMesh->ClearMeshSection(FurthestSectionIndex.Z);
+	 			    LandMesh->CreateMeshSection(FurthestSectionIndex.Z, WorkingThreads[index]->returnVal.Vertices, FixedIndices
+	 			    , WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
+	 			    , WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
+	 			    
+	 			    GeneratedSection.Add(WorkingThreads[index]->SectionLocation, FurthestSectionIndex.Z);
+	 			}
+	 		
+	 			LandGeneratorThread* Thread = WorkingThreads[index];
+	 			WorkingThreads.RemoveAt(index);
+	 			FreeThread.Add(Thread);
+	 		}
+	 	}
 		break;
 	case false:
 		
@@ -177,10 +226,6 @@ void ALandGenerator::Tick(float DeltaTime)
 			if (LastSectionIndex < MaxNumberOfSections)
 			{
 				GeneratedSection.Add(WorkingThreads[LastWorkingThreadChecked]->SectionLocation, LastSectionIndex);
-
-				// UKismetProceduralMeshLibrary::CalculateTangentsForMesh(WorkingThreads[LastWorkingThreadChecked]->returnVal.Vertices, Indices , WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs ,
-				 //	WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals , WorkingThreads[LastWorkingThreadChecked]->returnVal.Tangents);
-				
 				
 				LandMesh->CreateMeshSection(LastSectionIndex, WorkingThreads[LastWorkingThreadChecked]->returnVal.Vertices, FixedIndices
 				, WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals, WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs
@@ -188,7 +233,6 @@ void ALandGenerator::Tick(float DeltaTime)
 				
 				LandMesh->SetMaterial(LastSectionIndex, LandMaterial);
 				LastSectionIndex++;
-				//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Section %d %d generated"), WorkingThreads[index]->SectionLocation.X, WorkingThreads[index]->SectionLocation.Y));
 			}
 			else
 			{
@@ -207,12 +251,6 @@ void ALandGenerator::Tick(float DeltaTime)
 				
 				GeneratedSection.Add(WorkingThreads[LastWorkingThreadChecked]->SectionLocation, FurthestSectionIndex.Z);
 				
-				/*
-				LandMesh->UpdateMeshSection(FurthestSectionIndex.Z, WorkingThreads[index]->returnVal.Vertices
-				, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
-				, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents);
-				*/
-				
 			}
 			
 			LandGeneratorThread* Thread = WorkingThreads[LastWorkingThreadChecked];
@@ -222,13 +260,6 @@ void ALandGenerator::Tick(float DeltaTime)
 		
 		break;
 	}
-	
-	if (SectionsToGenerate.Num() > 0 && FreeThread.Num() > 0)
-	{
-		GenerateSectionAsync();
-	}
-	
-	Super::Tick(DeltaTime);
 }
 
 FIntVector ALandGenerator::GetFurthestSectionIndex(FVector2f Location)
@@ -259,26 +290,22 @@ FIntVector ALandGenerator::GetFurthestSectionIndex(FVector2f Location)
 	// 			break;
 	// 		}
 	// 		FurthestLocation = Element.Key;	
-	// 	}
+	// 	 }
 	// }
 
 	int i = 0;
 	for (auto Element : GeneratedSection)
 	{
 		i++;
-		Distance = SectionDistance(GetPlayerTile(), Element.Key);
+		Distance = GetDistanceToSection(GetPlayerTile(), Element.Key);
 		if ( Distance > FurtherDistance)
 		{
 			switch (bFastFindSectionToReplace)
 			{
 			case true:
-				if (Distance > SectionDistance(SectionCount/2, FIntPoint(0,0)))
+				if (Distance > GetDistanceToSection(SectionCount/2, FIntPoint(0,0)))
 				{
-					GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red,
-						FString::Printf(TEXT("Furthest Section %d %d is far enought at %d"), Element.Key.X, Element.Key.Y , i));
 					FurthestLocation = Element.Key;
-					
-					GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, FString::Printf(TEXT("Looped %d instead of %d"),i ,GeneratedSection.Num()));
 					return FIntVector(FurthestLocation.X, FurthestLocation.Y, GeneratedSection[FurthestLocation]);
 				}
 				
@@ -292,12 +319,6 @@ FIntVector ALandGenerator::GetFurthestSectionIndex(FVector2f Location)
 	}
 	
 	return FIntVector(FurthestLocation.X, FurthestLocation.Y, GeneratedSection[FurthestLocation]);
-}
-
-FIntVector ALandGenerator::GetFurthestSectionIndex(FVector Location)
-{
-	FVector2f Location2D = FVector2f(Location.X, Location.Y);
-	return GetFurthestSectionIndex(Location2D);
 }
 
 TArray<FIntPoint> ALandGenerator::GetSectionsInRadius(FVector2f Location)
@@ -336,16 +357,9 @@ FIntPoint ALandGenerator::GetSectionByLocation(FVector2f ActorLocation)
 	return FIntPoint(FMath::FloorToInt(ActorLocation.X / SectionSize), FMath::FloorToInt(ActorLocation.Y / SectionSize));
 }
 
-FIntPoint ALandGenerator::GetSectionByLocation(FVector ActorLocation)
-{
-	FVector2f Location = FVector2f(ActorLocation.X, ActorLocation.Y);
-	return GetSectionByLocation(Location);
-}
-
-int ALandGenerator::SectionDistance(FIntPoint Section1, FIntPoint Section2)
+int ALandGenerator::GetDistanceToSection(FIntPoint Section1, FIntPoint Section2)
 {
 	int distance = FVector2f::Distance(FVector2f(Section1.X, Section1.Y), FVector2f(Section2.X, Section2.Y));
-	//int distance = FMath::Abs(Section1.X - Section2.X) + FMath::Abs(Section1.Y - Section2.Y);
 	return distance;
 }
 
@@ -354,53 +368,13 @@ bool ALandGenerator::IsSectionInBounds(FIntPoint SectionLocation)
 	FVector2f Origin = GetSectionCenterLocation(SectionLocation);
 	float Distance =  FVector::Distance(FVector(Origin.X, Origin.Y , 0.0f),
 		UGameplayStatics::GetPlayerPawn(this, 0)->GetActorLocation() * FVector(1,1,0));
-	//return Distance < SectionReplaceDistance;
-	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Section divided by two : %d"), SectionCount.X / 2));
-	int DistanceInt = SectionDistance(GetSectionByLocation(UGameplayStatics::GetPlayerPawn(this, 0)->GetActorLocation()), SectionLocation);
+	int DistanceInt = GetDistanceToSection(GetSectionByLocation(UGameplayStatics::GetPlayerPawn(this, 0)->GetActorLocation()), SectionLocation);
 	return DistanceInt <= SectionCount.X / 2 && DistanceInt <= SectionCount.Y / 2;
 }
 
 FIntPoint ALandGenerator::GetPlayerTile()
 {
 	return GetSectionByLocation(UGameplayStatics::GetPlayerPawn(this, 0)->GetActorLocation());
-}
-
-void ALandGenerator::GenerateSectionAsync()
-{
-	int index = FreeThread.Num() - 1;
-	while (index >= 0)
-	{
-		int indexToProcess = SectionsToGenerate.Num() - 1;
-		bool bfoundAnIndexToProcess = false;
-
-		while (!bfoundAnIndexToProcess && indexToProcess >= 0)
-		{
-			if (InGenerationMap.Contains(SectionsToGenerate[indexToProcess]) || GeneratedSection.Contains(SectionsToGenerate[indexToProcess]) || !IsSectionInBounds(SectionsToGenerate[indexToProcess]))
-			{
-				//Log text Section is generating
-				UE_LOG(LogTemp, Warning, TEXT("Section %d %d already generating of index : %d"), SectionsToGenerate[indexToProcess].X , SectionsToGenerate[indexToProcess].Y , indexToProcess);
-				SectionsToGenerate.Pop();
-			}
-			else
-			{
-				bfoundAnIndexToProcess = true;
-				LandGeneratorThread* Thread = FreeThread.Pop();
-				WorkingThreads.Add(Thread);
-				InGenerationMap.Add(SectionsToGenerate[indexToProcess], Thread);
-				
-				Thread->SectionLocation = SectionsToGenerate[indexToProcess];
-				SectionsToGenerate.Pop();
-
-				Thread->bInputReady = true;
-				Thread->Run();
-
-			}
-			--indexToProcess ;
-		}
-		--index;
-	}
-
-	
 }
 
 void ALandGenerator::AddSectionToGenerate(FIntPoint SectionLocation)
