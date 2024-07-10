@@ -35,10 +35,14 @@ struct FProceduralMeshThings
 USTRUCT(BlueprintType)
 struct FVegetation
 {
-	GENERATED_BODY()
+	GENERATED_USTRUCT_BODY()
 
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Mesh")
 	UStaticMesh* Mesh;
-	float Density;
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
+	float MinDensity;
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
+	float MaxDensity;
 	
 };
 
@@ -113,7 +117,7 @@ protected:
 	void GenerateSectionIndices();
 	
 	UFUNCTION(Category = "Land Generation | Utils")
-	float HeightNoise2D(FVector2D Position) const;
+	float HeightNoise2D(FVector2f Position) const;
 	
 	UFUNCTION(BlueprintCallable , meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils") //return the furthest section index from a location
 	FIntVector GetFurthestSectionIndex(FVector2f Location); FIntVector GetFurthestSectionIndex(FVector Location) {return GetFurthestSectionIndex(FVector2f(Location.X, Location.Y));};
@@ -177,7 +181,8 @@ private:
 	UFUNCTION()
 	void UpdateThread(); //Iterate on threads and check if they are done then update the mesh
 
-	
+	UFUNCTION(BlueprintCallable , Category = "Land Generation")
+	void GenerateVegetationOnSection(FIntPoint SectionLocation , FVegetation Trees);
 
 #pragma region Debug
 	UFUNCTION(BlueprintCallable , Category = "Land Generation | Debug")

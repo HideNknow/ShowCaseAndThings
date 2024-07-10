@@ -27,6 +27,9 @@ ALandGenerator::ALandGenerator()
 // Called when the game starts or when spawned
 void ALandGenerator::BeginPlay()
 {
+
+	FMath::SRandInit(Seed.X + Seed.Y);
+	
 	VertexSpacing = SectionSize /( SectionVertexCount -1);
 
 	GenerateSectionIndices();
@@ -101,7 +104,7 @@ void ALandGenerator::GenerateSectionIndices()
 	
 }
 
-float ALandGenerator::HeightNoise2D(FVector2D Position) const
+float ALandGenerator::HeightNoise2D(FVector2f Position) const
 {
 	float Noise = NoiseAmplitude * (UKismetMathLibrary::PerlinNoise1D((Position.X + Seed.X) * NoiseScale) + UKismetMathLibrary::PerlinNoise1D((Position.Y + Seed.Y )* NoiseScale));
 	return Noise;
@@ -413,6 +416,32 @@ bool ALandGenerator::CanGenerateSection(FIntPoint SectionLocation)
 	return !InGenerationMap.Contains(SectionLocation) && !GeneratedSection.Contains(SectionLocation) && !SectionsToGenerate.Contains(SectionLocation);
 }
 
+void ALandGenerator::GenerateVegetationOnSection(FIntPoint SectionLocation , FVegetation Trees)
+{
+	//GetAnArrayOfLocationForVegetation
+	float rand = FMath::SRand();
+	int Density = rand * Trees.MaxDensity;
+	Density = FMath::Clamp(Density, Trees.MinDensity, Trees.MaxDensity);
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Density : %d Rand : %f"), Density , rand));
+	
+
+	FVector2f CenterLocation = GetSectionCenterLocation(SectionLocation);
+	float SectionExtent = SectionSize / 2;
+	
+	TArray<FVector>Locations;
+
+	for (int i = 0; i < Density; ++i)
+	{
+		FVector RandPoint = UKismetMathLibrary::RandomPointInBoundingBox(FVector(CenterLocation.X, CenterLocation.Y ,0)
+																				,FVector(SectionExtent, SectionExtent, 0)); //Random point in Section No Height
+
+		RandPoint =  RandPoint + FVector(0,0, HeightNoise2D(FVector2f(RandPoint.X, RandPoint.Y))); //Adding height
+
+		DrawDebugSphere(GetWorld(), RandPoint, 100, 12, FColor::Red, true, 9999);
+	}
+	
+	//SpawnVegetation
+}
 #pragma region Debug
 
 void ALandGenerator::DrawDebugSection(FIntPoint SectionLocation, float LifeTime, FColor Color)
