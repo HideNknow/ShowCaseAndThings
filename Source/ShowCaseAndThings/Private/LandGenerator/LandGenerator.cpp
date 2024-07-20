@@ -439,6 +439,10 @@ void ALandGenerator::GenerateVegetationOnSection(FIntPoint SectionLocation , FVe
 
 		DrawDebugSphere(GetWorld(), RandPoint, 100, 12, FColor::Red, true, 9999);
 	}
+
+	//LineTraceToGround
+
+	
 	
 	//SpawnVegetation
 }
