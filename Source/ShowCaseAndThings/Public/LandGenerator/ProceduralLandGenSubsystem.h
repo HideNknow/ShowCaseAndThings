@@ -11,29 +11,38 @@
  */
 
 class FastNoiseLite;
+
 class UGameplayStatics;
 
 USTRUCT(BlueprintType)
-struct FNoiseSettings
+struct FNoiseGroundSettings
 {
 	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Land | Noise")
-	FVector2f Seed = FVector2f(0.1f,0.1f);
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Land | Noise")
 	float NoiseAmplitude = 500.0f;
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Land | Noise")
-	float NoiseScale = 0.0003f;
+	float NoiseScale = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Land | Noise")
+	FVector2f Seed = FVector2f(0.1f,0.1f);
 	
 };
 
 UENUM(BlueprintType)
 enum ENoiseFor
 {
-	Ground,
-	Vegetation
+	Ground, //Noise used to generate the ground
+	SeedInRange,
+};
+
+UENUM(BlueprintType)
+enum ENoiseRepartitionType
+{
+	Perlin,			//Soft
+	PoissonDisc,	//Even Repartition
+	Value,			//Cubic
 };
 
 UCLASS()
@@ -41,29 +50,38 @@ class SHOWCASEANDTHINGS_API UProceduralLandGenSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	
 	virtual void PostInitialize() override;
 	virtual void BeginDestroy() override;
 	
-
-	FNoiseSettings NoiseGroundSettings;
-	FNoiseSettings NoiseVegetationSettings;
-
-	void SetNoiseGroundSettings(FNoiseSettings settings);
-	void SetNoiseVegetationSettings(FNoiseSettings settings);
-	FNoiseSettings GetNoiseSettings(ENoiseFor NoiseFor) const;
+	FNoiseGroundSettings* NoiseGroundSettings;
 
 	TMap<ENoiseFor , FastNoiseLite*> NoiseMap;
 
 public :
+	
+	UFUNCTION(BlueprintCallable, Category="Noise", meta=(WorldContext="WorldContextObject"))
+	static void SetNoiseGroundSettings(const UObject* WorldContextObject ,FNoiseGroundSettings& InNoiseGroundSettings);
+	
+public :
+	
 	FastNoiseLite* GetNoise(ENoiseFor NoiseFor)
 	{
 		return NoiseMap[NoiseFor];
 	}
 
-	UFUNCTION(BlueprintCallable, Category="Noise", meta=(WorldContext="WorldContextObject"))
-	static int iSeededRandInRange(const UObject* WorldContextObject , ENoiseFor NoiseForWhat, int InMin , int InMax , FVector2f Location);
+	float GroundHeightPosition(FVector2f Position);
 	
 	UFUNCTION(BlueprintCallable, Category="Noise", meta=(WorldContext="WorldContextObject"))
-	static float fSeededRandInRange(const UObject* WorldContextObject , ENoiseFor NoiseForWhat , float InMin , float InMax , FVector2f Location );
+	static float GetGroundHeightPosition(const UObject* WorldContextObject , FVector2f Position);
+	
+	UFUNCTION(BlueprintCallable, Category="Noise", meta=(WorldContext="WorldContextObject"))
+	static int iSeededRandInRange(const UObject* WorldContextObject , int InMin , int InMax , FVector2f Location);
+	
+	UFUNCTION(BlueprintCallable, Category="Noise", meta=(WorldContext="WorldContextObject"))
+	static float fSeededRandInRange(const UObject* WorldContextObject , float InMin , float InMax , FVector2f Location );
+
+	static float Test(FastNoiseLite NoiseSettings , FVector2f Location);
 	
 };

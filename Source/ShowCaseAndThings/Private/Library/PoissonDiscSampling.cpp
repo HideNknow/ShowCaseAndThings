@@ -3,7 +3,7 @@
 
 #include "Library/PoissonDiscSampling.h"
 
-#include "Kismet/GameplayStatics.h"
+#include "kismet/GameplayStatics.h"
 #include "LandGenerator/FastNoiseLite.h"
 #include "LandGenerator/ProceduralLandGenSubsystem.h"
 
@@ -45,7 +45,7 @@ void UPoissonDiscSampling::InsertPoint(TArray<TArray<FVector2f>>& grid, float ce
     grid[xindex][yindex] = point;
 }
 
-TArray<FVector2f> UPoissonDiscSampling::PoissonDiskSampling(float radius, int k, int width, int height)
+TArray<FVector2f> UPoissonDiscSampling::PoissonDiskSampling(float radius, int Tries, int width, int height)
 {
     int N = 2;
     TArray<FVector2f> points;
@@ -72,7 +72,7 @@ TArray<FVector2f> UPoissonDiscSampling::PoissonDiskSampling(float radius, int k,
         FVector2f p = active[random_index];
 
         bool found = false;
-        for (int tries = 0; tries < k; tries++) {
+        for (int tries = 0; tries < Tries; tries++) {
             float theta = FMath::RandRange(0, 360);
             float new_radius = FMath::RandRange(radius, 2*radius);
             float pnewx = p.X + new_radius * FMath::Cos(FMath::DegreesToRadians(theta));
@@ -96,15 +96,15 @@ TArray<FVector2f> UPoissonDiscSampling::PoissonDiskSampling(float radius, int k,
     return points;
 }
 
-TArray<FVector2f> UPoissonDiscSampling::SeededPoissonDiskSampling( const UObject* WorldContextObject, float radius, int k, int width, int height , FVector2f SectionLocation)
+TArray<FVector2f> UPoissonDiscSampling::SeededPoissonDiskSampling( const UObject* WorldContextObject, float radius, int Tries, int width, int height , FVector2f SectionLocation)
 {
     
     int N = 2;
     TArray<FVector2f> points;
     TArray<FVector2f> active;
     
-    FVector2f p0(UProceduralLandGenSubsystem::fSeededRandInRange(WorldContextObject,ENoiseFor::Vegetation, 0, width , SectionLocation)
-        , UProceduralLandGenSubsystem::fSeededRandInRange(WorldContextObject,ENoiseFor::Vegetation, 0, height , SectionLocation));
+    FVector2f p0(UProceduralLandGenSubsystem::fSeededRandInRange(WorldContextObject, 0, width , SectionLocation)
+        , UProceduralLandGenSubsystem::fSeededRandInRange(WorldContextObject, 0, height , SectionLocation));
     
     TArray<TArray<FVector2f>> grid;
     const float Cellsize = trunc(FMath::FloorToFloat(radius/sqrt(N)));
@@ -126,19 +126,19 @@ TArray<FVector2f> UPoissonDiscSampling::SeededPoissonDiskSampling( const UObject
     active.Add(p0);
     
     while (active.Num() > 0) {
-        int random_index = UProceduralLandGenSubsystem::iSeededRandInRange(WorldContextObject,ENoiseFor::Vegetation
+        int random_index = UProceduralLandGenSubsystem::iSeededRandInRange(WorldContextObject
             , 0, active.Num() - 1 , SectionLocation + active.Num());
         
         
         FVector2f p = active[random_index];
 
         bool found = false;
-        for (int tries = 0; tries < k; tries++) {
+        for (int tries = 0; tries < Tries; tries++) {
             
-            float Theta = UProceduralLandGenSubsystem::fSeededRandInRange(WorldContextObject, ENoiseFor::Vegetation,
+            float Theta = UProceduralLandGenSubsystem::fSeededRandInRange(WorldContextObject,
                 0, 360,SectionLocation + tries);
 
-            const float New_Radius = UProceduralLandGenSubsystem::fSeededRandInRange(WorldContextObject, ENoiseFor::Vegetation,
+            const float New_Radius = UProceduralLandGenSubsystem::fSeededRandInRange(WorldContextObject,
                 radius,2 * radius, SectionLocation + tries);
 
             float pnewx = p.X + New_Radius * FMath::Cos(FMath::DegreesToRadians(Theta));

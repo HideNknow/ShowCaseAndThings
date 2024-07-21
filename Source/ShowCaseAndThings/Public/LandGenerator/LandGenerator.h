@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "KismetProceduralMeshLibrary.h"
+#include "ProceduralLandGenSubsystem.h"
 #include "ProceduralMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "LandGenerator.generated.h"
@@ -39,11 +40,27 @@ struct FVegetation
 
 	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Mesh")
 	UStaticMesh* Mesh;
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Mesh")
+	UMaterialInterface* Material;
+	
 	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
 	float MinDensity;
 	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
 	float MaxDensity;
 	
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
+	float MinDistance; //Minimal distances between two instances
+
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
+	TEnumAsByte<ENoiseRepartitionType> RepartionType; //Noise Type To use repartition
+
+	FVegetation()
+	{
+		MinDensity = 0.1f;
+		MaxDensity = 0.5f;
+		MinDistance = 100.0f; 
+		RepartionType = ENoiseRepartitionType::Perlin;
+	}
 };
 
 UCLASS()
@@ -63,6 +80,7 @@ public:
 	
 	// Sets default values for this actor's properties
 	ALandGenerator();
+	~ALandGenerator();
 
 	UPROPERTY( BlueprintReadWrite , EditAnywhere , Category = "Land | Tile")
 	float SectionSize = 500.0f;
@@ -74,22 +92,14 @@ public:
 	float VertexSpacing;
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Land | Tile")
-	FIntPoint SectionCount = FIntPoint(2, 2);
+	int ChunckRenderDistance = 1;
+	int RenderBounds;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Land | Noise")
-	FVector2f Seed = FVector2f(0.1f,0.1f);
+	UPROPERTY(BlueprintReadWrite,EditAnywhere, Category = "AAAAA" , DisplayName = "Noise Settings")
+	FNoiseGroundSettings NoiseGroundSettings;
 	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Land | Noise")
-	float NoiseAmplitude = 500.0f;
-	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Land | Noise")
-	float NoiseScale = 0.0003f;
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere , Category = "Land | Rendering ")
 	UMaterialInterface* LandMaterial;
-
-	UPROPERTY(BlueprintReadOnly , VisibleAnywhere , Category = "Land | Utils")
-	float SectionReplaceDistance;
 
 	UPROPERTY(BlueprintReadOnly , VisibleAnywhere , Category = "Land | Utils ")
 	int MaxNumberOfSections;
@@ -116,11 +126,11 @@ protected:
 	UFUNCTION(Category = "Land Generation")
 	void GenerateSectionIndices();
 	
-	UFUNCTION(Category = "Land Generation | Utils")
-	float HeightNoise2D(FVector2f Position) const;
-	
 	UFUNCTION(BlueprintCallable , meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils") //return the furthest section index from a location
 	FIntVector GetFurthestSectionIndex(FVector2f Location); FIntVector GetFurthestSectionIndex(FVector Location) {return GetFurthestSectionIndex(FVector2f(Location.X, Location.Y));};
+
+	UFUNCTION(BlueprintCallable ,BlueprintPure, meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils")
+	bool IsTileOutOfChunkDistance(FIntPoint SectionLocation);
 	
 	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
 	FVector2f GetSectionCenterLocation(FIntPoint SectionLocation);
@@ -133,9 +143,6 @@ protected:
 
 	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
 	int GetDistanceToSection(FIntPoint Section1 , FIntPoint Section2);
-	
-	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
-	bool IsSectionInBounds(FIntPoint SectionLocation);
 
 	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
 	FIntPoint GetPlayerTile();
@@ -168,6 +175,7 @@ private:
 	int LastWorkingThreadChecked = -1;
 	
 	TMap<FIntPoint , LandGeneratorThread*> InGenerationMap;
+	
 
 	UPROPERTY(BlueprintReadOnly , Category = "Land Generation" , meta = (AllowPrivateAccess = "true"))
 	TArray<FIntPoint> SectionsToGenerate;

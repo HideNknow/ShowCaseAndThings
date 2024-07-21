@@ -33,9 +33,6 @@ public:
 protected:
 	FIntPoint SectionVertexCount;
 	float VertexSpacing;
-	float NoiseAmplitude;
-	float NoiseScale;
-	FVector2f Seed;
 	TArray<int> Indices;
 
 

@@ -3,10 +3,11 @@
 
 #include "LandGenerator/LandGeneratorThread.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "LandGenerator/FastNoiseLite.h"
 
 LandGeneratorThread::LandGeneratorThread(ALandGenerator* InLandGenerator, FIntPoint sectionLocation)
 	: LandGenerator(InLandGenerator), SectionLocation(sectionLocation), SectionVertexCount(InLandGenerator->SectionVertexCount), VertexSpacing(InLandGenerator->VertexSpacing)
-	, NoiseAmplitude(InLandGenerator->NoiseAmplitude), NoiseScale(InLandGenerator->NoiseScale) , Seed(InLandGenerator->Seed) , Indices(InLandGenerator->Indices)
+	, Indices(InLandGenerator->Indices)
 {
 	Thread = FRunnableThread::Create(this, TEXT("FLandGeneratorThread"), 0, EThreadPriority::TPri_Normal , FPlatformAffinity::GetPoolThreadMask());
 }
@@ -80,9 +81,16 @@ void LandGeneratorThread:: GenerateSectionVert(TArray<FVector>& InVertices , TAr
 
 float LandGeneratorThread::HeightNoise2D(FVector2D Position) const
 {
-	float Noise = NoiseAmplitude * (UKismetMathLibrary::PerlinNoise1D((Position.X + Seed.X) * NoiseScale) + UKismetMathLibrary::PerlinNoise1D((Position.Y + Seed.Y )* NoiseScale));
-	return Noise;
 
+
+	//float B = LandGenerator->GetWorld()->GetSubsystem<UProceduralLandGenSubsystem>()->GetNoise(ENoiseFor::Ground)->GetNoise(
+	//	(Position.X + Seed.X) * NoiseScale, (Position.Y + Seed.Y) * NoiseScale);
+	//float Noise = NoiseAmplitude * B;
+	//return Noise;
+	// float Noise = NoiseAmplitude * (UKismetMathLibrary::PerlinNoise1D((Position.X + Seed.X) * NoiseScale) + UKismetMathLibrary::PerlinNoise1D((Position.Y + Seed.Y )* NoiseScale));
+	// return Noise;
+	
+	return LandGenerator->GetWorld()->GetSubsystem<UProceduralLandGenSubsystem>()->GroundHeightPosition(FVector2f(Position.X, Position.Y));
 }
 
 void LandGeneratorThread::GenerateSectionTangentAndNormals(TArray<FVector>& InVertices,TArray<FVector>& InNormals, TArray<FVector2D>& InUVs, TArray<FProcMeshTangent>& Tangents)

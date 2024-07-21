@@ -18,9 +18,9 @@ public:
 	static void InsertPoint(TArray<TArray<FVector2f>>& grid, float cellsize, FVector2f point);
 
 	UFUNCTION(BlueprintCallable, Category = "PoissonDiscSampling")
-	static TArray<FVector2f> PoissonDiskSampling(float radius, int k, int width, int height);
+	static TArray<FVector2f> PoissonDiskSampling(float radius, int Tries, int width, int height);
 	
 	UFUNCTION(BlueprintCallable,  meta=(WorldContext="WorldContextObject") , Category = "PoissonDiscSampling")
-	static TArray<FVector2f> SeededPoissonDiskSampling(const UObject* WorldContextObject, float radius, int k, int width, int height , FVector2f SectionLocation);
+	static TArray<FVector2f> SeededPoissonDiskSampling(const UObject* WorldContextObject, float radius, int Tries, int width, int height , FVector2f SectionLocation);
 	
 };
