@@ -7,7 +7,7 @@ public class ShowCaseAndThingsEditorTarget : TargetRules
 {
 	public ShowCaseAndThingsEditorTarget(TargetInfo Target) : base(Target)
 	{
-		Type = TargetType.Editor;
+        Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V5;
 		ExtraModuleNames.Add("ShowCaseAndThings");
 	}

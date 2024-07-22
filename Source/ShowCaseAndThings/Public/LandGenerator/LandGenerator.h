@@ -10,6 +10,9 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "LandGenerator.generated.h"
 
+//Declrare dynamic multicast delegate
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerChangedSection , FIntPoint , SectionLocation);
+
 class LandGeneratorThread;
 
 USTRUCT(BlueprintType)
@@ -95,7 +98,7 @@ public:
 	int ChunckRenderDistance = 1;
 	int RenderBounds;
 
-	UPROPERTY(BlueprintReadWrite,EditAnywhere, Category = "AAAAA" , DisplayName = "Noise Settings")
+	UPROPERTY(BlueprintReadWrite,EditAnywhere, Category = "Land | " , DisplayName = "Noise Settings")
 	FNoiseGroundSettings NoiseGroundSettings;
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere , Category = "Land | Rendering ")
@@ -112,6 +115,11 @@ public:
 	
 	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Land | Misc")
 	bool bFastFindSectionToReplace = true; //if true we will use the closest section to the furthest minimal distance section to be replaced when creating a new one.
+
+	UPROPERTY()
+	FIntPoint PlayerSection; //this value is updated every frame
+
+	FOnPlayerChangedSection OnPlayerChangedSection;
 	
 protected:
 	// Called when the game starts or when spawned
@@ -126,9 +134,6 @@ protected:
 	UFUNCTION(Category = "Land Generation")
 	void GenerateSectionIndices();
 	
-	UFUNCTION(BlueprintCallable , meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils") //return the furthest section index from a location
-	FIntVector GetFurthestSectionIndex(FVector2f Location); FIntVector GetFurthestSectionIndex(FVector Location) {return GetFurthestSectionIndex(FVector2f(Location.X, Location.Y));};
-
 	UFUNCTION(BlueprintCallable ,BlueprintPure, meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils")
 	bool IsTileOutOfChunkDistance(FIntPoint SectionLocation);
 	
@@ -139,18 +144,18 @@ protected:
 	FIntPoint GetSectionByLocation(FVector2f ActorLocation); FIntPoint GetSectionByLocation(FVector ActorLocation) {return GetSectionByLocation(FVector2f(ActorLocation.X, ActorLocation.Y));};
 
 	UFUNCTION(BlueprintCallable , meta = (AllowPrivateAccess = "true") , Category = "Land Generation | Utils")
-	TArray<FIntPoint> GetSectionsInRadius(FVector2f Location);
+	TArray<FIntPoint> GetSectionsInRenderBound(FVector2f Location);
 
 	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
 	int GetDistanceToSection(FIntPoint Section1 , FIntPoint Section2);
 
 	UFUNCTION(BlueprintCallable , BlueprintPure , Category = "Land Generation | Utils")
-	FIntPoint GetPlayerTile();
+	FIntPoint GetPlayerSection();
 
-public:	
+public:
 
 	UFUNCTION(BlueprintCallable , Category = "Land Generation Asynch")
-	void AddSectionToGenerate(FIntPoint SectionLocation);
+	void AddSectionToGenerate(TArray<FIntPoint> SectionsLocation);
 
 	UFUNCTION(BlueprintCallable , Category = "Land Generation Asynch" , meta = (AllowPrivateAccess = "true") , BlueprintPure)
 	bool IsSectionInGeneration(FIntPoint SectionLocation);
@@ -158,12 +163,10 @@ public:
 	UFUNCTION(BlueprintCallable , Category = "Land Generation Asynch" , meta = (AllowPrivateAccess = "true") , BlueprintPure)
 	bool CanGenerateSection(FIntPoint SectionLocation);
 
-	//base indices don't need to be recalculated 
+	//base indices don't need to be recalculated
 	TArray<int32> Indices;
 	TArray<int32> FixedIndices;
 private:
-	
-	int LastSectionIndex;
 	
 	TArray<LandGeneratorThread*> ThreadArray; //All threads working or not
 	TArray<LandGeneratorThread*> FreeThread; //All threads that are not working
@@ -175,14 +178,26 @@ private:
 	int LastWorkingThreadChecked = -1;
 	
 	TMap<FIntPoint , LandGeneratorThread*> InGenerationMap;
-	
 
 	UPROPERTY(BlueprintReadOnly , Category = "Land Generation" , meta = (AllowPrivateAccess = "true"))
 	TArray<FIntPoint> SectionsToGenerate;
 
-	UPROPERTY(BlueprintReadOnly , Category = "Land Generation" , meta = (AllowPrivateAccess = "true"))
-	TMap<FIntPoint , int> GeneratedSection;
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Land Generation | Vegetation" , meta = (AllowPrivateAccess = "true"))
+	TArray<FIntPoint> GeneratedSectionsArray;
 
+	int AddSectionToArrays(FIntPoint SectionLocation);
+	UFUNCTION(BlueprintCallable ,BlueprintPure, Category = "Land Generation | Utils" , meta = (AllowPrivateAccess = "true"))
+	int FindIndexInArray(FIntPoint SectionLocation ,bool PrintDebug = false);
+	bool IsSectionInArrays(FIntPoint SectionLocation);
+	FIntPoint GetIndexInArray(int Index);
+	
+	
+	UFUNCTION()
+	void UpdatePlayerSection();
+
+	UFUNCTION()
+	void EventOnPlayerChangedSection(FIntPoint NewSection);
+	
 	UFUNCTION(BlueprintCallable , Category = "Land Generation Asynch")
 	void GenerateSectionAsync(); //Assign Work to threads
 	
