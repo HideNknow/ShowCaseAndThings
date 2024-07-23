@@ -8,8 +8,7 @@ public class ShowCaseAndThingsTarget : TargetRules
 	public ShowCaseAndThingsTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Game;
-        BuildEnvironment = TargetBuildEnvironment.Unique;
-        DefaultBuildSettings = BuildSettingsVersion.V2;
-		ExtraModuleNames.Add("ShowCaseAndThings");
+        DefaultBuildSettings = BuildSettingsVersion.V5;
+        ExtraModuleNames.Add("ShowCaseAndThings");
 	}
 }

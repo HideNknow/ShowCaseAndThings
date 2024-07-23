@@ -8,7 +8,6 @@ public class ShowCaseAndThings : ModuleRules
 	{
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "HeadMountedDisplay" , "ProceduralMeshComponent" });
 	}
 }
