@@ -29,7 +29,7 @@ ALandGenerator::ALandGenerator()//Magic
 	
 	NoiseGroundSettings.Seed = FVector2f(0.1f, 0.1f);
 	NoiseGroundSettings.NoiseAmplitude = 1000.0f;
-	NoiseGroundSettings.NoiseScale = 1.0f;
+	NoiseGroundSettings.NoiseFrequency = 1.0f;
 	
 }
 
@@ -50,6 +50,10 @@ void ALandGenerator::BeginPlay()
 	//Bind
 	UProceduralLandGenSubsystem::GetSubsystem(GetWorld())->OnPlayerChangedSection.AddDynamic(this , &ALandGenerator::EventOnPlayerChangedSection);
 	UProceduralLandGenSubsystem::GetSubsystem(GetWorld())->OnSectionGenerated.AddDynamic(this , &ALandGenerator::EventOnSectionGenerated);
+	NoiseGroundSettings.NoiseFrequency = NoiseGroundSettings.NoiseFrequency / SectionSize;
+	UProceduralLandGenSubsystem::SetNoiseGroundSettings(GetWorld(), NoiseGroundSettings);;
+
+	UProceduralLandGenSubsystem::AddNoiseGroundLayer(GetWorld(),NoiseGroundLayers);
 	
 	VertexSpacing = SectionSize /( SectionVertexCount -1);
 	RenderBounds = ChunckRenderDistance*2+1;
@@ -58,14 +62,12 @@ void ALandGenerator::BeginPlay()
 	GeneratedSectionsArray.Init(FIntPoint(-11111,-111111), MaxNumberOfSections);
 	
 	GenerateSectionIndices();
+	
 	for (int i = 0; i < MaxThreadNumber; ++i)
 	{
 		ThreadArray.Add(new LandGeneratorThread(this, FIntPoint(0, 0)));
 	}
 	FreeThread = ThreadArray;
-	
-
-	UProceduralLandGenSubsystem::SetNoiseGroundSettings(GetWorld(), NoiseGroundSettings);;
 	
 	this->SetActorTickEnabled(true);
 	
@@ -434,15 +436,16 @@ void ALandGenerator::GenerateTreeTypeVegetationOnSection(FIntPoint SectionLocati
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Message);
 		return; //return if no material
 	}
-	
-	LandMeshInstances->SetStaticMesh(Trees.Mesh);
-	LandMeshInstances->SetMaterial(0, Trees.Material);
 
-	
+	if ( LandMeshInstances->GetStaticMesh() != Trees.Mesh)
+	{
+		LandMeshInstances->SetStaticMesh(Trees.Mesh);
+		LandMeshInstances->SetMaterial(0, Trees.Material);
+	}
 
 	int NumInstances = (UProceduralLandGenSubsystem::fSeededRandInRange(GetWorld(),Trees.MinDensity,Trees.MaxDensity,SectionLocation)) * FMath::Pow((SectionSize / 1000),2.0f) ;
 
-	GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::Printf(TEXT("NumInstances : %d"), NumInstances));
+	//GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::Printf(TEXT("NumInstances : %d"), NumInstances));
 	
 	for (int i = 0; i < NumInstances; ++i)
 	{

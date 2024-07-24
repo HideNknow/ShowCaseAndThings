@@ -17,7 +17,6 @@ public:
 	virtual ~LandGeneratorThread() override;
 
 private:
-	FRunnableThread* Thread;
 	ALandGenerator* LandGenerator;
 public:
 	virtual uint32 Run() override;

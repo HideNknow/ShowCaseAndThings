@@ -9,16 +9,14 @@ LandGeneratorThread::LandGeneratorThread(ALandGenerator* InLandGenerator, FIntPo
 	: LandGenerator(InLandGenerator), SectionLocation(sectionLocation), SectionVertexCount(InLandGenerator->SectionVertexCount), VertexSpacing(InLandGenerator->VertexSpacing)
 	, Indices(InLandGenerator->Indices)
 {
-	Thread = FRunnableThread::Create(this, TEXT("FLandGeneratorThread"), 0, EThreadPriority::TPri_Lowest , FPlatformAffinity::GetPoolThreadMask());
+	//Thread = FRunnableThread::Create(this, TEXT("FLandGeneratorThread"), 0, EThreadPriority::TPri_Lowest , FPlatformAffinity::GetPoolThreadMask());
 }
 
 LandGeneratorThread::~LandGeneratorThread()
 {
-	if (Thread != nullptr)
+	if (this != nullptr)
 	{
-		UE_LOG(LogTemp , Warning , TEXT("Thread Killed"));
-		Thread->Kill(true);
-		delete Thread;
+		UE_LOG(LogTemp , Warning , TEXT("this Killed"));
 	}
 }
 
@@ -69,7 +67,6 @@ void LandGeneratorThread:: GenerateSectionVert(TArray<FVector>& InVertices , TAr
 			InVertices.Add(Vert);
 
 			FVector2D Uv = FVector2D(( SectionVertexCount.X - 1) * SectionLocation.X + X,  (SectionVertexCount.Y - 1) * SectionLocation.Y + Y) * (VertexSpacing / 100);
-			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Uv : %s"), *Uv.ToString()));
 			InUvs.Add(Uv);
 		}
 	}

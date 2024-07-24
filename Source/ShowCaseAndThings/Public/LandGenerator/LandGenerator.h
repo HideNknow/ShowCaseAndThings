@@ -102,7 +102,7 @@ public:
 	int ChunckRenderDistance = 1;
 	int RenderBounds;
 
-	UPROPERTY(BlueprintReadWrite,EditAnywhere, Category = "Land | " , DisplayName = "Noise Settings")
+	UPROPERTY(BlueprintReadWrite,EditAnywhere, Category = "Land | Noise" , DisplayName = "Noise Settings")
 	FNoiseGroundSettings NoiseGroundSettings;
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere , Category = "Land | Rendering ")
@@ -122,6 +122,9 @@ public:
 
 	UPROPERTY()
 	FIntPoint PlayerSection; //this value is updated every frame
+
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Land | Noise")
+	TArray<FNoiseLayer> NoiseGroundLayers;
 	
 protected:
 	// Called when the game starts or when spawned
@@ -192,7 +195,6 @@ private:
 	int FindIndexInArray(FIntPoint SectionLocation ,bool PrintDebug = false);
 	bool IsSectionInArrays(FIntPoint SectionLocation);
 	FIntPoint GetIndexInArray(int Index);
-	
 	
 	UFUNCTION()
 	void UpdatePlayerSection();
