@@ -40,8 +40,19 @@ void UProceduralLandGenSubsystem::BeginDestroy()
 	Super::BeginDestroy();
 }
 
+UProceduralLandGenSubsystem* UProceduralLandGenSubsystem::GetSubsystem(const UObject* WorldContextObject)
+{
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull);
+	if (World == nullptr)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("World is null"));
+		return nullptr;
+	}
+	return World->GetSubsystem<UProceduralLandGenSubsystem>();
+}
+
 void UProceduralLandGenSubsystem::SetNoiseGroundSettings(const UObject* WorldContextObject,
-	FNoiseGroundSettings& InNoiseGroundSettings)
+                                                         FNoiseGroundSettings& InNoiseGroundSettings)
 {
 	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull);
 	if (World == nullptr)

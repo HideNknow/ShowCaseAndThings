@@ -14,7 +14,7 @@ class SHOWCASEANDTHINGS_API LandGeneratorThread : FRunnable
 {
 public:
 	LandGeneratorThread(ALandGenerator* InLandGenerator, FIntPoint sectionLocation);
-	~LandGeneratorThread();
+	virtual ~LandGeneratorThread() override;
 
 private:
 	FRunnableThread* Thread;
@@ -33,7 +33,7 @@ public:
 protected:
 	FIntPoint SectionVertexCount;
 	float VertexSpacing;
-	TArray<int> Indices;
+	TArray<int>& Indices;
 
 
 

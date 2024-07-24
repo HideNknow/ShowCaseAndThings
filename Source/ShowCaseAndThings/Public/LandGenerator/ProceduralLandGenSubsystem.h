@@ -10,8 +10,11 @@
  * 
  */
 
-class FastNoiseLite;
+//Dynamic multicast delegate for the section change
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerChangedSection , FIntPoint , SectionLocation);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSectionGenerated , FIntPoint , SectionLocation);
 
+class FastNoiseLite;
 class UGameplayStatics;
 
 USTRUCT(BlueprintType)
@@ -58,6 +61,15 @@ class SHOWCASEANDTHINGS_API UProceduralLandGenSubsystem : public UWorldSubsystem
 	FNoiseGroundSettings* NoiseGroundSettings;
 
 	TMap<ENoiseFor , FastNoiseLite*> NoiseMap;
+
+public:
+	UPROPERTY(BlueprintAssignable , Category="ProceduralLandscape")
+	FOnPlayerChangedSection OnPlayerChangedSection;
+	UPROPERTY(BlueprintAssignable , Category="ProceduralLandscape")
+	FOnSectionGenerated OnSectionGenerated;
+
+	UFUNCTION(BlueprintCallable, Category="Noise", meta=(WorldContext="WorldContextObject"))
+	static UProceduralLandGenSubsystem* GetSubsystem(const UObject* WorldContextObject);
 
 public :
 	

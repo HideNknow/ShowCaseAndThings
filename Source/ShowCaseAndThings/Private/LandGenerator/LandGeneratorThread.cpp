@@ -9,7 +9,7 @@ LandGeneratorThread::LandGeneratorThread(ALandGenerator* InLandGenerator, FIntPo
 	: LandGenerator(InLandGenerator), SectionLocation(sectionLocation), SectionVertexCount(InLandGenerator->SectionVertexCount), VertexSpacing(InLandGenerator->VertexSpacing)
 	, Indices(InLandGenerator->Indices)
 {
-	Thread = FRunnableThread::Create(this, TEXT("FLandGeneratorThread"), 0, EThreadPriority::TPri_Normal , FPlatformAffinity::GetPoolThreadMask());
+	Thread = FRunnableThread::Create(this, TEXT("FLandGeneratorThread"), 0, EThreadPriority::TPri_Lowest , FPlatformAffinity::GetPoolThreadMask());
 }
 
 LandGeneratorThread::~LandGeneratorThread()
@@ -26,8 +26,6 @@ uint32 LandGeneratorThread::Run()
 {
 	while (bInputReady)
 	{
-		//Promise->SetValue(FProceduralMeshThings());
-		//returnVal = FProceduralMeshThings();
 		TArray<FVector> Vertices;
 		TArray<FVector> Normals;
 		GenerateSectionVert(Vertices, returnVal.UVs);
@@ -38,7 +36,6 @@ uint32 LandGeneratorThread::Run()
 		returnVal.Normals = Normals;
 		bInputReady = false;
 	}
-	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Finished Run")));
 	return 0;
 }
 
@@ -59,7 +56,6 @@ bool LandGeneratorThread::Init()
 
 void LandGeneratorThread:: GenerateSectionVert(TArray<FVector>& InVertices , TArray<FVector2D>& InUvs)
 {
-
 	FVector VertOffset = FVector(SectionLocation.X * (SectionVertexCount.X -1), SectionLocation.Y * (SectionVertexCount.Y -1), 0) * VertexSpacing;
 	FVector Vert;
 	
@@ -81,15 +77,6 @@ void LandGeneratorThread:: GenerateSectionVert(TArray<FVector>& InVertices , TAr
 
 float LandGeneratorThread::HeightNoise2D(FVector2D Position) const
 {
-
-
-	//float B = LandGenerator->GetWorld()->GetSubsystem<UProceduralLandGenSubsystem>()->GetNoise(ENoiseFor::Ground)->GetNoise(
-	//	(Position.X + Seed.X) * NoiseScale, (Position.Y + Seed.Y) * NoiseScale);
-	//float Noise = NoiseAmplitude * B;
-	//return Noise;
-	// float Noise = NoiseAmplitude * (UKismetMathLibrary::PerlinNoise1D((Position.X + Seed.X) * NoiseScale) + UKismetMathLibrary::PerlinNoise1D((Position.Y + Seed.Y )* NoiseScale));
-	// return Noise;
-	
 	return LandGenerator->GetWorld()->GetSubsystem<UProceduralLandGenSubsystem>()->GroundHeightPosition(FVector2f(Position.X, Position.Y));
 }
 

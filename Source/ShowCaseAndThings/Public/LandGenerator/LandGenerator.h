@@ -10,9 +10,6 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "LandGenerator.generated.h"
 
-//Declrare dynamic multicast delegate
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerChangedSection , FIntPoint , SectionLocation);
-
 class LandGeneratorThread;
 
 USTRUCT(BlueprintType)
@@ -45,22 +42,29 @@ struct FVegetation
 	UStaticMesh* Mesh;
 	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Mesh")
 	UMaterialInterface* Material;
-	
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Mesh | Scale")
+	float ScaleFactor;
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Mesh | Scale")
+	FVector ScaleVariationMin;
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Mesh | Scale")
+	FVector ScaleVariationMax;
 	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
 	float MinDensity;
 	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
 	float MaxDensity;
-	
 	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
 	float MinDistance; //Minimal distances between two instances
-
 	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Vegetation | Density")
 	TEnumAsByte<ENoiseRepartitionType> RepartionType; //Noise Type To use repartition
 
+	
 	FVegetation()
 	{
+		ScaleFactor = 1.0f;
+		ScaleVariationMin = FVector(1,1,1);
+		ScaleVariationMax = FVector(1,1,1);
 		MinDensity = 0.1f;
-		MaxDensity = 0.5f;
+		MaxDensity = 1.0f;
 		MinDistance = 100.0f; 
 		RepartionType = ENoiseRepartitionType::Perlin;
 	}
@@ -118,8 +122,6 @@ public:
 
 	UPROPERTY()
 	FIntPoint PlayerSection; //this value is updated every frame
-
-	FOnPlayerChangedSection OnPlayerChangedSection;
 	
 protected:
 	// Called when the game starts or when spawned
@@ -182,7 +184,7 @@ private:
 	UPROPERTY(BlueprintReadOnly , Category = "Land Generation" , meta = (AllowPrivateAccess = "true"))
 	TArray<FIntPoint> SectionsToGenerate;
 
-	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Land Generation | Vegetation" , meta = (AllowPrivateAccess = "true"))
+	UPROPERTY()
 	TArray<FIntPoint> GeneratedSectionsArray;
 
 	int AddSectionToArrays(FIntPoint SectionLocation);
@@ -197,6 +199,8 @@ private:
 
 	UFUNCTION()
 	void EventOnPlayerChangedSection(FIntPoint NewSection);
+	UFUNCTION()
+	void EventOnSectionGenerated(FIntPoint SectionLocation);
 	
 	UFUNCTION(BlueprintCallable , Category = "Land Generation Asynch")
 	void GenerateSectionAsync(); //Assign Work to threads
@@ -205,7 +209,11 @@ private:
 	void UpdateThread(); //Iterate on threads and check if they are done then update the mesh
 
 	UFUNCTION(BlueprintCallable , Category = "Land Generation")
-	void GenerateVegetationOnSection(FIntPoint SectionLocation , FVegetation Trees);
+	void GenerateTreeTypeVegetationOnSection(FIntPoint SectionLocation , FVegetation Trees);
+
+protected:
+	UPROPERTY(BlueprintReadWrite , EditAnywhere , Category = "Land Generation | Vegetation" ,meta = (AllowPrivate))
+	TArray<FVegetation> VegetationArray_TreeType;
 
 #pragma region Debug
 	UFUNCTION(BlueprintCallable , Category = "Land Generation | Debug")

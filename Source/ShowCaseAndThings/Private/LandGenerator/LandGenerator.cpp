@@ -10,17 +10,19 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "LandGenerator/ProceduralLandGenSubsystem.h"
 #include "Library/PoissonDiscSampling.h"
+#include "PhysicsEngine/BodySetup.h"
 #include "Runtime/Core/Tests/Containers/TestUtils.h"
 
 // Sets default values
-ALandGenerator::ALandGenerator()
+ALandGenerator::ALandGenerator()//Magic
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	LandMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("LandMesh"));
 	LandMesh->SetupAttachment(this->GetRootComponent());
-	LandMesh->bUseAsyncCooking = false;
+	LandMesh->bUseAsyncCooking = true;
+	LandMesh->bUseComplexAsSimpleCollision = false;
 
 	LandMeshInstances = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("LandMeshInstances"));
 	LandMeshInstances->SetupAttachment(this->GetRootComponent());
@@ -37,10 +39,17 @@ ALandGenerator::~ALandGenerator()
 // Called when the game starts or when spawned
 void ALandGenerator::BeginPlay()
 {
+
+	LandMeshInstances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	LandMeshInstances->SetMobility(EComponentMobility::Type::Stationary);
+	LandMeshInstances->SetCastShadow(false);
+	LandMeshInstances->SetVisibility(true);
+	
 	PlayerSection = FIntPoint(-11111,-111111);
 
 	//Bind
-	ALandGenerator::OnPlayerChangedSection.AddDynamic(this , &ALandGenerator::EventOnPlayerChangedSection);
+	UProceduralLandGenSubsystem::GetSubsystem(GetWorld())->OnPlayerChangedSection.AddDynamic(this , &ALandGenerator::EventOnPlayerChangedSection);
+	UProceduralLandGenSubsystem::GetSubsystem(GetWorld())->OnSectionGenerated.AddDynamic(this , &ALandGenerator::EventOnSectionGenerated);
 	
 	VertexSpacing = SectionSize /( SectionVertexCount -1);
 	RenderBounds = ChunckRenderDistance*2+1;
@@ -54,6 +63,7 @@ void ALandGenerator::BeginPlay()
 		ThreadArray.Add(new LandGeneratorThread(this, FIntPoint(0, 0)));
 	}
 	FreeThread = ThreadArray;
+	
 
 	UProceduralLandGenSubsystem::SetNoiseGroundSettings(GetWorld(), NoiseGroundSettings);;
 	
@@ -126,10 +136,8 @@ void ALandGenerator::Tick(float DeltaTime)
 	UpdatePlayerSection();
 	
 	UpdateThread();//Update the thread to check if the thread is done generating the section
-	//
+	
 	GenerateSectionAsync(); //Iterate over the sections to generate and check if we can assign them to workers
-
-	//So now we need to generate vegetations and other stuffs
 	
 	Super::Tick(DeltaTime);
 }
@@ -187,7 +195,7 @@ void ALandGenerator::UpdatePlayerSection()
 	if (NewPlayerSection != PlayerSection)
 	{
 		PlayerSection = NewPlayerSection;
-		OnPlayerChangedSection.Broadcast(PlayerSection);
+		UProceduralLandGenSubsystem::GetSubsystem(GetWorld())->OnPlayerChangedSection.Broadcast(PlayerSection);
 	}
 }
 
@@ -195,6 +203,15 @@ void ALandGenerator::EventOnPlayerChangedSection(FIntPoint NewSection)
 {
 	AddSectionToGenerate(GetSectionsInRenderBound(GetSectionCenterLocation(GetPlayerSection())));
 	return;
+}
+
+void ALandGenerator::EventOnSectionGenerated(FIntPoint SectionLocation)
+{
+	for (auto Element : VegetationArray_TreeType)
+	{
+		GenerateTreeTypeVegetationOnSection(SectionLocation , Element);
+	}
+
 }
 
 void ALandGenerator::GenerateSectionAsync()
@@ -257,17 +274,25 @@ void ALandGenerator::UpdateThread()
 					 , WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
 					 , WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
 	 				LandMesh->SetMaterial(ChangedIndex, LandMaterial);
-	 				
+
+	 				UProceduralLandGenSubsystem::GetSubsystem(GetWorld())->OnSectionGenerated.Broadcast(WorkingThreads[index]->SectionLocation);
 	 			}
-	 			else //Sinon on recreer la section la plus eloignee
+	 			else
 	 			{
 
-	 				int ChangedIndex = AddSectionToArrays(WorkingThreads[LastWorkingThreadChecked]->SectionLocation);
+	 				int ChangedIndex = AddSectionToArrays(WorkingThreads[LastWorkingThreadChecked]->SectionLocation); //index de la section a changer
 	 				
-	 			    LandMesh->ClearMeshSection(ChangedIndex);
-	 			    LandMesh->CreateMeshSection(ChangedIndex, WorkingThreads[index]->returnVal.Vertices, FixedIndices
-	 			    , WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
-	 			    , WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
+	 			    //LandMesh->ClearMeshSection(ChangedIndex);
+	 			    // LandMesh->CreateMeshSection(ChangedIndex, WorkingThreads[index]->returnVal.Vertices, FixedIndices
+	 			    // , WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
+	 			    // , WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents, true);
+
+	 				
+	 				LandMesh->UpdateMeshSection(ChangedIndex, WorkingThreads[index]->returnVal.Vertices
+					, WorkingThreads[index]->returnVal.Normals, WorkingThreads[index]->returnVal.UVs
+					, WorkingThreads[index]->returnVal.Colors, WorkingThreads[index]->returnVal.Tangents);
+
+	 				UProceduralLandGenSubsystem::GetSubsystem(GetWorld())->OnSectionGenerated.Broadcast(WorkingThreads[index]->SectionLocation);
 	 			}
 	 			
 	 			LandGeneratorThread* Thread = WorkingThreads[index];
@@ -298,6 +323,8 @@ void ALandGenerator::UpdateThread()
 				 , WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals, WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs
 				 , WorkingThreads[LastWorkingThreadChecked]->returnVal.Colors, WorkingThreads[LastWorkingThreadChecked]->returnVal.Tangents, true);
 				LandMesh->SetMaterial(ChangedIndex, LandMaterial);
+
+				UProceduralLandGenSubsystem::GetSubsystem(GetWorld())->OnSectionGenerated.Broadcast(WorkingThreads[LastWorkingThreadChecked]->SectionLocation);
 				
 			}
 			else
@@ -305,10 +332,15 @@ void ALandGenerator::UpdateThread()
 
 				int ChangedIndex = AddSectionToArrays(WorkingThreads[LastWorkingThreadChecked]->SectionLocation);
 				
-				 LandMesh->ClearMeshSection(ChangedIndex);
-				 LandMesh->CreateMeshSection(ChangedIndex, WorkingThreads[LastWorkingThreadChecked]->returnVal.Vertices, FixedIndices
-				 , WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals, WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs
-				 , WorkingThreads[LastWorkingThreadChecked]->returnVal.Colors, WorkingThreads[LastWorkingThreadChecked]->returnVal.Tangents, true);
+				 // LandMesh->ClearMeshSection(ChangedIndex);
+				 // LandMesh->CreateMeshSection(ChangedIndex, WorkingThreads[LastWorkingThreadChecked]->returnVal.Vertices, FixedIndices
+				 // , WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals, WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs
+				 // , WorkingThreads[LastWorkingThreadChecked]->returnVal.Colors, WorkingThreads[LastWorkingThreadChecked]->returnVal.Tangents, true);
+				LandMesh->UpdateMeshSection(ChangedIndex, WorkingThreads[LastWorkingThreadChecked]->returnVal.Vertices
+				, WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals, WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs
+				, WorkingThreads[LastWorkingThreadChecked]->returnVal.Colors, WorkingThreads[LastWorkingThreadChecked]->returnVal.Tangents);
+
+				UProceduralLandGenSubsystem::GetSubsystem(GetWorld())->OnSectionGenerated.Broadcast(WorkingThreads[LastWorkingThreadChecked]->SectionLocation);
 	
 				
 			}
@@ -388,7 +420,7 @@ bool ALandGenerator::CanGenerateSection(FIntPoint SectionLocation)
 	return !InGenerationMap.Contains(SectionLocation) && !IsSectionInArrays(SectionLocation) && !SectionsToGenerate.Contains(SectionLocation);
 }
 
-void ALandGenerator::GenerateVegetationOnSection(FIntPoint SectionLocation , FVegetation Trees)
+void ALandGenerator::GenerateTreeTypeVegetationOnSection(FIntPoint SectionLocation , FVegetation Trees)
 {
 	if (Trees.Mesh == nullptr || Trees.Material == nullptr)
 	{
@@ -405,19 +437,33 @@ void ALandGenerator::GenerateVegetationOnSection(FIntPoint SectionLocation , FVe
 	
 	LandMeshInstances->SetStaticMesh(Trees.Mesh);
 	LandMeshInstances->SetMaterial(0, Trees.Material);
+
 	
-	TArray<FVector2f>Locations = UPoissonDiscSampling::SeededPoissonDiskSampling(GetWorld(), Trees.MinDistance, 20 , SectionSize/2 , SectionSize/2 , SectionLocation);
+
+	int NumInstances = (UProceduralLandGenSubsystem::fSeededRandInRange(GetWorld(),Trees.MinDensity,Trees.MaxDensity,SectionLocation)) * FMath::Pow((SectionSize / 1000),2.0f) ;
+
+	GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red, FString::Printf(TEXT("NumInstances : %d"), NumInstances));
 	
-	for (auto HorizontalLocation : Locations)
+	for (int i = 0; i < NumInstances; ++i)
 	{
-		FVector FinalLocation = FVector(HorizontalLocation.X, HorizontalLocation.Y, UProceduralLandGenSubsystem::GetGroundHeightPosition(GetWorld(), HorizontalLocation));
-		
-		LandMeshInstances->AddInstance(FTransform(FRotator(0,0,0), FinalLocation, FVector(1,1,1)));
-		
+		FVector Location = FVector(
+			UProceduralLandGenSubsystem::fSeededRandInRange(GetWorld(), 0, SectionSize, FVector2f(SectionLocation.X + i, SectionLocation.Y)),
+			UProceduralLandGenSubsystem::fSeededRandInRange(GetWorld(), 0, SectionSize, FVector2f(SectionLocation.X , SectionLocation.Y+ i)   ), 0);
+		Location += FVector(SectionLocation.X * SectionSize, SectionLocation.Y * SectionSize, 0);
+		Location.Z = UProceduralLandGenSubsystem::GetGroundHeightPosition(GetWorld(), FVector2f(Location.X, Location.Y));
+
+
+		FVector Scale = FVector(UProceduralLandGenSubsystem::fSeededRandInRange(GetWorld(), Trees.ScaleVariationMin.X, Trees.ScaleVariationMax.X, FVector2f(SectionLocation.X, SectionLocation.Y)),
+			UProceduralLandGenSubsystem::fSeededRandInRange(GetWorld(), Trees.ScaleVariationMin.Y, Trees.ScaleVariationMax.Y, FVector2f(SectionLocation.X, SectionLocation.Y)),
+			UProceduralLandGenSubsystem::fSeededRandInRange(GetWorld(), Trees.ScaleVariationMin.Z, Trees.ScaleVariationMax.Z, FVector2f(SectionLocation.X, SectionLocation.Y)));
+
+		LandMeshInstances->AddInstance(FTransform(FRotator(0, 0, 0), Location, Scale * Trees.ScaleFactor));
 	}
 
 	
 }
+
+
 #pragma region Debug
 
 void ALandGenerator::DrawDebugSection(FIntPoint SectionLocation, float LifeTime, FColor Color)

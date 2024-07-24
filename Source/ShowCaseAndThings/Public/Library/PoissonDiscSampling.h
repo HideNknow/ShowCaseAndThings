@@ -23,4 +23,6 @@ public:
 	UFUNCTION(BlueprintCallable,  meta=(WorldContext="WorldContextObject") , Category = "PoissonDiscSampling")
 	static TArray<FVector2f> SeededPoissonDiskSampling(const UObject* WorldContextObject, float radius, int Tries, int width, int height , FVector2f SectionLocation);
 	
+	static TArray<FVector2f> SeededPoissonPerlinDiskSampling(const UObject* WorldContextObject, float radius, int Tries, int width, int height , FVector2f SectionLocation);
+	
 };
