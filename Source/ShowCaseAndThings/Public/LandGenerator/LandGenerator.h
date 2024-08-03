@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "KismetProceduralMeshLibrary.h"
 #include "ProceduralLandGenSubsystem.h"
 #include "ProceduralMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "LandGenerator.generated.h"
 
 class LandGeneratorThread;
+class UCustomProceduralMeshComponent;
 
 USTRUCT(BlueprintType)
 struct FProceduralMeshThings
@@ -76,7 +76,6 @@ class SHOWCASEANDTHINGS_API ALandGenerator : public AActor
 	GENERATED_BODY()
 	
 public:	//Components
-
 	UPROPERTY(BlueprintReadOnly , Category = "Land")
 	UProceduralMeshComponent* LandMesh;
 

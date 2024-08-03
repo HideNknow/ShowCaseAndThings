@@ -2,16 +2,16 @@
 
 
 #include "LandGenerator/LandGenerator.h"
+
+#include "Engine/GameEngine.h"
 #include "LandGenerator/LandGeneratorThread.h"
 
 
 
 #include "Kismet/GameplayStatics.h"
-#include "Kismet/KismetMathLibrary.h"
+#include "LandGenerator/CustomProceduralMeshComponent.h"
 #include "LandGenerator/ProceduralLandGenSubsystem.h"
-#include "Library/PoissonDiscSampling.h"
-#include "PhysicsEngine/BodySetup.h"
-#include "Runtime/Core/Tests/Containers/TestUtils.h"
+#include "LandGenerator/CustomProceduralMeshComponent.h"
 
 // Sets default values
 ALandGenerator::ALandGenerator()//Magic
@@ -134,7 +134,10 @@ void ALandGenerator::Tick(float DeltaTime)
 {
 	GEngine->AddOnScreenDebugMessage(-1, this->GetActorTickInterval(), FColor::Red, FString::Printf(TEXT("Total threads: %d   Free threads: %d"), ThreadArray.Num() ,FreeThread.Num()));
 	GEngine->AddOnScreenDebugMessage(-1, this->GetActorTickInterval(), FColor::Red, FString::Printf(TEXT("Sections to generate: %d"), SectionsToGenerate.Num()));
+	GEngine->AddOnScreenDebugMessage(-1, this->GetActorTickInterval(), FColor::Red, FString::Printf(TEXT("Sections generated: %f"), GetWorld()->DeltaRealTimeSeconds));
 
+	SetActorTickInterval(GetWorld()->DeltaRealTimeSeconds*2);
+	
 	UpdatePlayerSection();
 	
 	UpdateThread();//Update the thread to check if the thread is done generating the section
@@ -320,7 +323,6 @@ void ALandGenerator::UpdateThread()
 			if (LandMesh->GetNumSections() -1 < MaxNumberOfSections)
 			{
 				int ChangedIndex = AddSectionToArrays(WorkingThreads[LastWorkingThreadChecked]->SectionLocation);
-				
 				 LandMesh->CreateMeshSection(ChangedIndex, WorkingThreads[LastWorkingThreadChecked]->returnVal.Vertices, FixedIndices
 				 , WorkingThreads[LastWorkingThreadChecked]->returnVal.Normals, WorkingThreads[LastWorkingThreadChecked]->returnVal.UVs
 				 , WorkingThreads[LastWorkingThreadChecked]->returnVal.Colors, WorkingThreads[LastWorkingThreadChecked]->returnVal.Tangents, true);

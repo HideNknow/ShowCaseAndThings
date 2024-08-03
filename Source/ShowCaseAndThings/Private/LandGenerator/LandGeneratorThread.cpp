@@ -2,6 +2,8 @@
 
 
 #include "LandGenerator/LandGeneratorThread.h"
+
+#include "KismetProceduralMeshLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "LandGenerator/FastNoiseLite.h"
 
